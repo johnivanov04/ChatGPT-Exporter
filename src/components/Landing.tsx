@@ -1,10 +1,9 @@
-import type { NormalizedConversation } from "../types/conversation";
-
 interface LandingProps {
-  onLoaded: (conversations: NormalizedConversation[]) => void;
+  onChooseZip: () => void;
+  onChoosePaste: () => void;
 }
 
-export function Landing(_props: LandingProps) {
+export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
   return (
     <div>
       <div className="text-center mb-10">
@@ -24,12 +23,16 @@ export function Landing(_props: LandingProps) {
           subtitle="Recommended"
           description="Drop the ZIP from ChatGPT > Settings > Data Controls > Export. We'll let you pick one conversation."
           status="primary"
+          onClick={onChooseZip}
         />
         <Card
           title="Paste Chat Manually"
           subtitle="Fallback"
           description="Paste a copied transcript. We'll try to detect user/assistant turns."
           status="secondary"
+          onClick={onChoosePaste}
+          disabled
+          disabledNote="Coming in M8"
         />
         <Card
           title="Browser Extension"
@@ -51,16 +54,28 @@ interface CardProps {
   subtitle: string;
   description: string;
   status: "primary" | "secondary" | "disabled";
+  onClick?: () => void;
+  disabled?: boolean;
+  disabledNote?: string;
 }
 
-function Card({ title, subtitle, description, status }: CardProps) {
+function Card({
+  title,
+  subtitle,
+  description,
+  status,
+  onClick,
+  disabled,
+  disabledNote,
+}: CardProps) {
+  const isDisabled = status === "disabled" || disabled;
   const base =
-    "rounded-lg border p-6 transition flex flex-col h-full text-left";
+    "rounded-lg border p-6 transition flex flex-col h-full text-left w-full";
   const styles: Record<CardProps["status"], string> = {
     primary:
-      "border-indigo-300 bg-indigo-50 hover:border-indigo-500 hover:shadow-sm cursor-pointer",
+      "border-indigo-300 bg-indigo-50 hover:border-indigo-500 hover:shadow-sm",
     secondary:
-      "border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm cursor-pointer",
+      "border-slate-200 bg-white hover:border-slate-400 hover:shadow-sm",
     disabled: "border-dashed border-slate-300 bg-slate-50 opacity-70",
   };
   const badge: Record<CardProps["status"], string> = {
@@ -68,8 +83,8 @@ function Card({ title, subtitle, description, status }: CardProps) {
     secondary: "text-slate-700 bg-slate-100",
     disabled: "text-slate-500 bg-slate-200",
   };
-  return (
-    <div className={`${base} ${styles[status]}`}>
+  const content = (
+    <>
       <span
         className={`self-start text-xs font-medium px-2 py-0.5 rounded ${badge[status]}`}
       >
@@ -77,9 +92,22 @@ function Card({ title, subtitle, description, status }: CardProps) {
       </span>
       <h3 className="mt-3 text-lg font-semibold text-slate-900">{title}</h3>
       <p className="mt-2 text-sm text-slate-600 flex-1">{description}</p>
-      {status !== "disabled" && (
-        <p className="mt-4 text-xs text-slate-500">Wired up in next milestone</p>
+      {isDisabled && disabledNote && (
+        <p className="mt-4 text-xs text-slate-500">{disabledNote}</p>
       )}
-    </div>
+    </>
+  );
+
+  if (isDisabled || !onClick) {
+    return <div className={`${base} ${styles[status]}`}>{content}</div>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${base} ${styles[status]} cursor-pointer`}
+    >
+      {content}
+    </button>
   );
 }
