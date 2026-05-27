@@ -14,8 +14,10 @@ export function toIsoString(value: unknown): string | undefined {
 
 export function formatDateTime(iso: string | undefined): string {
   if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
   try {
-    return new Date(iso).toLocaleString();
+    return d.toLocaleString();
   } catch {
     return iso;
   }
@@ -23,8 +25,10 @@ export function formatDateTime(iso: string | undefined): string {
 
 export function formatDateShort(iso: string | undefined): string {
   if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
   try {
-    return new Date(iso).toLocaleDateString();
+    return d.toLocaleDateString();
   } catch {
     return iso;
   }
