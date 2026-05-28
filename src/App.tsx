@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Landing } from "./components/Landing";
 import { UploadZip } from "./components/UploadZip";
-import type { LocatedConversationFile } from "./lib/zip/findConversationFile";
+import type { NormalizedConversation } from "./types/conversation";
+import { formatDateShort } from "./lib/utils/date";
 
 type Stage =
   | { kind: "landing" }
   | { kind: "upload-zip" }
   | {
-      kind: "zip-located";
+      kind: "loaded";
       sourceFile: File;
-      located: LocatedConversationFile;
+      conversations: NormalizedConversation[];
     };
 
 export default function App() {
@@ -47,17 +48,16 @@ export default function App() {
 
         {stage.kind === "upload-zip" && (
           <UploadZip
-            onLocated={(sourceFile, located) =>
-              setStage({ kind: "zip-located", sourceFile, located })
+            onLoaded={(sourceFile, conversations) =>
+              setStage({ kind: "loaded", sourceFile, conversations })
             }
             onCancel={() => setStage({ kind: "landing" })}
           />
         )}
 
-        {stage.kind === "zip-located" && (
-          <ZipLocatedPreview
-            sourceFile={stage.sourceFile}
-            located={stage.located}
+        {stage.kind === "loaded" && (
+          <ParsedSummary
+            conversations={stage.conversations}
             onReset={() => setStage({ kind: "landing" })}
           />
         )}
@@ -72,38 +72,55 @@ export default function App() {
   );
 }
 
-function ZipLocatedPreview({
-  sourceFile,
-  located,
+function ParsedSummary({
+  conversations,
   onReset,
 }: {
-  sourceFile: File;
-  located: LocatedConversationFile;
+  conversations: NormalizedConversation[];
   onReset: () => void;
 }) {
+  const totalMessages = conversations.reduce(
+    (sum, c) => sum + c.messages.length,
+    0,
+  );
+  const empty = conversations.filter((c) => c.messages.length === 0).length;
+
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-8">
-      <h2 className="text-xl font-semibold text-slate-900">ZIP read OK</h2>
-      <p className="mt-2 text-sm text-slate-600">
-        Conversations will appear in M3 once the parser is wired up. For now
-        you can verify the file was extracted and located correctly.
+      <h2 className="text-xl font-semibold text-slate-900">
+        Parsed {conversations.length} conversation
+        {conversations.length === 1 ? "" : "s"}
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        {totalMessages.toLocaleString()} messages total
+        {empty > 0 ? ` · ${empty} empty` : ""}. The searchable picker and
+        preview arrive in the next milestones — this is a parser sanity check.
       </p>
-      <dl className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-        <Field label="Source file" value={sourceFile.name} mono />
-        <Field
-          label="Size"
-          value={`${(sourceFile.size / 1024 / 1024).toFixed(2)} MB`}
-        />
-        <Field label="Conversation file" value={located.filename} mono />
-        <Field
-          label="Top-level entries"
-          value={String(located.topLevelCount)}
-        />
-        <Field
-          label="Raw JSON size"
-          value={`${(located.rawJson.length / 1024).toFixed(1)} KB`}
-        />
-      </dl>
+
+      <ul className="mt-6 divide-y divide-slate-100 border border-slate-100 rounded-md max-h-[28rem] overflow-auto">
+        {conversations.map((c) => (
+          <li key={c.id} className="px-4 py-3 flex items-center gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-800 truncate">
+                {c.title}
+              </p>
+              <p className="text-xs text-slate-500">
+                {formatDateShort(c.updatedAt ?? c.createdAt) || "no date"}
+              </p>
+            </div>
+            <span
+              className={`shrink-0 text-xs px-2 py-0.5 rounded ${
+                c.messages.length === 0
+                  ? "bg-slate-100 text-slate-400"
+                  : "bg-indigo-100 text-indigo-700"
+              }`}
+            >
+              {c.messages.length} msg
+            </span>
+          </li>
+        ))}
+      </ul>
+
       <button
         type="button"
         onClick={onReset}
@@ -111,29 +128,6 @@ function ZipLocatedPreview({
       >
         Start over
       </button>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-500">
-        {label}
-      </dt>
-      <dd
-        className={`mt-0.5 text-slate-800 ${mono ? "font-mono text-xs break-all" : ""}`}
-      >
-        {value}
-      </dd>
     </div>
   );
 }

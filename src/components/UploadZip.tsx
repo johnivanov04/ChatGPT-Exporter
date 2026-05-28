@@ -1,12 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 import { loadZip } from "../lib/zip/readZip";
-import {
-  locateConversationFile,
-  type LocatedConversationFile,
-} from "../lib/zip/findConversationFile";
+import { locateConversationFile } from "../lib/zip/findConversationFile";
+import { parseChatGptExportJson } from "../lib/parsers/parseChatGptExport";
+import type { NormalizedConversation } from "../types/conversation";
 
 interface UploadZipProps {
-  onLocated: (file: File, located: LocatedConversationFile) => void;
+  onLoaded: (
+    sourceFile: File,
+    conversations: NormalizedConversation[],
+  ) => void;
   onCancel: () => void;
 }
 
@@ -15,7 +17,9 @@ type State =
   | { kind: "reading"; filename: string }
   | { kind: "error"; message: string };
 
-export function UploadZip({ onLocated, onCancel }: UploadZipProps) {
+const HUGE_FILE_BYTES = 100 * 1024 * 1024; // 100 MB
+
+export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -23,7 +27,14 @@ export function UploadZip({ onLocated, onCancel }: UploadZipProps) {
   const handleFile = useCallback(
     async (file: File) => {
       setState({ kind: "reading", filename: file.name });
+      // Yield so the "reading" state paints before heavy parsing work.
+      await new Promise((r) => setTimeout(r, 0));
       try {
+        if (file.size > HUGE_FILE_BYTES) {
+          console.warn(
+            "Large export file; parsing and PDF generation may be slow.",
+          );
+        }
         const zip = await loadZip(file);
         const located = await locateConversationFile(zip);
         if (!located) {
@@ -34,7 +45,16 @@ export function UploadZip({ onLocated, onCancel }: UploadZipProps) {
           });
           return;
         }
-        onLocated(file, located);
+        const conversations = parseChatGptExportJson(located.rawJson);
+        if (conversations.length === 0) {
+          setState({
+            kind: "error",
+            message:
+              "Found the conversation file but couldn't read any conversations from it. The export format may have changed.",
+          });
+          return;
+        }
+        onLoaded(file, conversations);
       } catch (err) {
         setState({
           kind: "error",
@@ -43,7 +63,7 @@ export function UploadZip({ onLocated, onCancel }: UploadZipProps) {
         });
       }
     },
-    [onLocated],
+    [onLoaded],
   );
 
   const onDrop = useCallback(
@@ -110,7 +130,8 @@ export function UploadZip({ onLocated, onCancel }: UploadZipProps) {
 
       {state.kind === "reading" && (
         <div className="mt-6 rounded-md bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700">
-          Reading <span className="font-mono">{state.filename}</span>&hellip;
+          Reading and parsing <span className="font-mono">{state.filename}</span>
+          &hellip;
         </div>
       )}
 
