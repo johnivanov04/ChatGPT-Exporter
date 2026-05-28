@@ -1,16 +1,22 @@
 import { useState } from "react";
 import { Landing } from "./components/Landing";
 import { UploadZip } from "./components/UploadZip";
+import { ConversationPicker } from "./components/ConversationPicker";
 import type { NormalizedConversation } from "./types/conversation";
-import { formatDateShort } from "./lib/utils/date";
 
 type Stage =
   | { kind: "landing" }
   | { kind: "upload-zip" }
   | {
-      kind: "loaded";
+      kind: "picker";
       sourceFile: File;
       conversations: NormalizedConversation[];
+    }
+  | {
+      kind: "selected";
+      sourceFile: File;
+      conversations: NormalizedConversation[];
+      conversation: NormalizedConversation;
     };
 
 export default function App() {
@@ -49,16 +55,32 @@ export default function App() {
         {stage.kind === "upload-zip" && (
           <UploadZip
             onLoaded={(sourceFile, conversations) =>
-              setStage({ kind: "loaded", sourceFile, conversations })
+              setStage({ kind: "picker", sourceFile, conversations })
             }
             onCancel={() => setStage({ kind: "landing" })}
           />
         )}
 
-        {stage.kind === "loaded" && (
-          <ParsedSummary
+        {stage.kind === "picker" && (
+          <ConversationPicker
             conversations={stage.conversations}
+            onSelect={(conversation) =>
+              setStage({ ...stage, kind: "selected", conversation })
+            }
             onReset={() => setStage({ kind: "landing" })}
+          />
+        )}
+
+        {stage.kind === "selected" && (
+          <SelectedPlaceholder
+            conversation={stage.conversation}
+            onBack={() =>
+              setStage({
+                kind: "picker",
+                sourceFile: stage.sourceFile,
+                conversations: stage.conversations,
+              })
+            }
           />
         )}
       </main>
@@ -72,62 +94,29 @@ export default function App() {
   );
 }
 
-function ParsedSummary({
-  conversations,
-  onReset,
+function SelectedPlaceholder({
+  conversation,
+  onBack,
 }: {
-  conversations: NormalizedConversation[];
-  onReset: () => void;
+  conversation: NormalizedConversation;
+  onBack: () => void;
 }) {
-  const totalMessages = conversations.reduce(
-    (sum, c) => sum + c.messages.length,
-    0,
-  );
-  const empty = conversations.filter((c) => c.messages.length === 0).length;
-
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-8">
-      <h2 className="text-xl font-semibold text-slate-900">
-        Parsed {conversations.length} conversation
-        {conversations.length === 1 ? "" : "s"}
-      </h2>
-      <p className="mt-1 text-sm text-slate-600">
-        {totalMessages.toLocaleString()} messages total
-        {empty > 0 ? ` · ${empty} empty` : ""}. The searchable picker and
-        preview arrive in the next milestones — this is a parser sanity check.
-      </p>
-
-      <ul className="mt-6 divide-y divide-slate-100 border border-slate-100 rounded-md max-h-[28rem] overflow-auto">
-        {conversations.map((c) => (
-          <li key={c.id} className="px-4 py-3 flex items-center gap-4">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-slate-800 truncate">
-                {c.title}
-              </p>
-              <p className="text-xs text-slate-500">
-                {formatDateShort(c.updatedAt ?? c.createdAt) || "no date"}
-              </p>
-            </div>
-            <span
-              className={`shrink-0 text-xs px-2 py-0.5 rounded ${
-                c.messages.length === 0
-                  ? "bg-slate-100 text-slate-400"
-                  : "bg-indigo-100 text-indigo-700"
-              }`}
-            >
-              {c.messages.length} msg
-            </span>
-          </li>
-        ))}
-      </ul>
-
       <button
         type="button"
-        onClick={onReset}
-        className="mt-6 text-sm text-indigo-600 hover:underline"
+        onClick={onBack}
+        className="text-sm text-slate-500 hover:text-slate-700"
       >
-        Start over
+        &larr; Back to list
       </button>
+      <h2 className="mt-4 text-xl font-semibold text-slate-900">
+        {conversation.title}
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        {conversation.messages.length} messages. The full transcript preview and
+        export options arrive in the next milestone.
+      </p>
     </div>
   );
 }
