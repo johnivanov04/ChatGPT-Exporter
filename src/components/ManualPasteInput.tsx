@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ArrowLeft, ClipboardPaste, Sparkles } from "lucide-react";
 import { parseManualPaste } from "../lib/parsers/parseManualPaste";
 import type { NormalizedConversation } from "../types/conversation";
 
@@ -13,13 +14,17 @@ A plain Ctrl+A / Cmd+A on the ChatGPT page works: we detect attached file names 
 
 Also recognized: User:, [User], Assistant:, [Assistant], ChatGPT:, You said:, ChatGPT said:, Copilot said:, Claude said:, Gemini said:, System:, [System].`;
 
-export function ManualPasteInput({ onParsed, onCancel }: ManualPasteInputProps) {
+export function ManualPasteInput({
+  onParsed,
+  onCancel,
+}: ManualPasteInputProps) {
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
 
-  // Live preview: parse on every keystroke so the user sees how their text
-  // splits before committing. Cheap since parse is a single pass.
-  const preview = useMemo(() => parseManualPaste(text, { title }), [text, title]);
+  const preview = useMemo(
+    () => parseManualPaste(text, { title }),
+    [text, title],
+  );
 
   const roleSummary = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -33,28 +38,34 @@ export function ManualPasteInput({ onParsed, onCancel }: ManualPasteInputProps) 
   const canSubmit = totalMessages > 0;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">
-            Paste a chat manually
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            A best-effort fallback. We split on common role markers; without
-            markers, the whole paste becomes a single unknown-role message.
-          </p>
+    <div className="max-w-3xl mx-auto rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-8">
+      <div className="flex items-start justify-between mb-6 gap-4">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+            <ClipboardPaste className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+              Paste a chat manually
+            </h2>
+            <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
+              A best-effort fallback. We try classic role markers first, then a
+              heuristic for ChatGPT page-copies; without any signal, the whole
+              paste becomes a single message.
+            </p>
+          </div>
         </div>
         <button
           type="button"
           onClick={onCancel}
-          className="text-sm text-slate-500 hover:text-slate-700"
+          className="shrink-0 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition px-2 py-1 rounded-md hover:bg-slate-100 focus-ring"
         >
-          &larr; Back
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
       </div>
 
       <label className="block">
-        <span className="text-xs uppercase tracking-wide text-slate-500">
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
           Title (optional)
         </span>
         <input
@@ -62,12 +73,12 @@ export function ManualPasteInput({ onParsed, onCancel }: ManualPasteInputProps) 
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Pasted conversation"
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
         />
       </label>
 
-      <label className="block mt-4">
-        <span className="text-xs uppercase tracking-wide text-slate-500">
+      <label className="block mt-5">
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
           Transcript
         </span>
         <textarea
@@ -75,24 +86,28 @@ export function ManualPasteInput({ onParsed, onCancel }: ManualPasteInputProps) 
           onChange={(e) => setText(e.target.value)}
           placeholder={PLACEHOLDER}
           rows={16}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-mono text-[13px] leading-relaxed outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
         />
       </label>
 
-      <div className="mt-4 flex items-center justify-between gap-4">
-        <div className="text-sm text-slate-600">
+      <div className="mt-5 flex items-center justify-between gap-4 flex-wrap">
+        <div className="text-sm text-slate-600 inline-flex items-center gap-2">
           {text.trim() === "" ? (
             <span className="text-slate-400">Waiting for input…</span>
           ) : totalMessages === 0 ? (
             <span className="text-slate-400">No content detected.</span>
           ) : (
             <>
-              <span className="font-medium">{totalMessages}</span>{" "}
-              message{totalMessages === 1 ? "" : "s"} detected
+              <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+              <span>
+                <span className="font-semibold text-slate-800">
+                  {totalMessages}
+                </span>{" "}
+                message{totalMessages === 1 ? "" : "s"} detected
+              </span>
               {Object.keys(roleSummary).length > 0 && (
                 <span className="text-slate-500">
-                  {" "}
-                  ·{" "}
+                  &middot;{" "}
                   {Object.entries(roleSummary)
                     .map(([r, n]) => `${n} ${r}`)
                     .join(", ")}
@@ -105,15 +120,15 @@ export function ManualPasteInput({ onParsed, onCancel }: ManualPasteInputProps) 
           type="button"
           onClick={() => canSubmit && onParsed(preview)}
           disabled={!canSubmit}
-          className="rounded-md bg-indigo-600 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed"
+          className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-4 py-2 text-sm font-medium shadow-sm shadow-violet-500/30 hover:shadow-md hover:shadow-violet-500/40 hover:-translate-y-px transition-all disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 focus-ring"
         >
-          Continue
+          Continue &rarr;
         </button>
       </div>
 
-      <p className="mt-6 text-xs text-slate-500">
+      <p className="mt-6 text-xs text-slate-500 leading-relaxed">
         Role detection is best-effort. If your transcript has no markers, we'll
-        keep it as one block. You can still preview and export it.
+        keep it as one block &mdash; you can still preview and export it.
       </p>
     </div>
   );

@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  ArrowLeft,
+  User,
+  Bot,
+  Settings,
+  Wrench,
+  HelpCircle,
+  type LucideIcon,
+} from "lucide-react";
 import type {
   ChatRole,
   ExportOptions,
@@ -41,10 +50,6 @@ export function ConversationPreview({
     return { visible, internalCount };
   }, [conversation.messages, showInternal]);
 
-  // Single source of truth: this is what the user sees in the preview AND
-  // what every exporter receives. Redaction is applied here so toggling a
-  // redaction checkbox immediately shows the redacted text in the preview
-  // (WYSIWYG).
   const exportable = useMemo<NormalizedConversation>(
     () => redactConversation({ ...conversation, messages: visible }, options),
     [conversation, visible, options],
@@ -68,26 +73,29 @@ export function ConversationPreview({
 
   return (
     <div>
-      <div className="no-print flex items-center justify-between mb-4">
+      <div className="no-print flex items-center justify-between mb-5">
         <button
           type="button"
           onClick={onBack}
-          className="text-sm text-slate-500 hover:text-slate-700"
+          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition px-2 py-1 rounded-md hover:bg-slate-100 focus-ring"
         >
-          &larr; Back to list
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to list
         </button>
-        <span className="text-xs text-slate-400">
-          {conversation.messages.length} total messages
+        <span className="text-xs text-slate-500">
+          <span className="font-semibold text-slate-700">
+            {conversation.messages.length}
+          </span>{" "}
+          total messages
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_18rem] gap-6">
-        <article className="rounded-lg border border-slate-200 bg-white overflow-hidden">
-          <header className="border-b border-slate-100 px-6 py-5">
-            <h2 className="text-2xl font-semibold text-slate-900">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_19rem] gap-6">
+        <article className="rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <header className="border-b border-slate-100 px-7 py-6 bg-gradient-to-r from-slate-50/80 to-transparent">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 leading-tight">
               {conversation.title}
             </h2>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
               {conversation.createdAt && (
                 <span>Created {formatDateTime(conversation.createdAt)}</span>
               )}
@@ -96,17 +104,22 @@ export function ConversationPreview({
                   <span>Updated {formatDateTime(conversation.updatedAt)}</span>
                 )}
               {typeof conversation.metadata?.model === "string" && (
-                <span>Model: {String(conversation.metadata.model)}</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-1 w-1 rounded-full bg-violet-500" />
+                  {String(conversation.metadata.model)}
+                </span>
               )}
             </div>
           </header>
 
           {exportable.messages.length === 0 ? (
-            <div className="px-6 py-10 text-center text-sm text-slate-500">
-              No messages to show
-              {internalCount > 0 &&
-                ` (${internalCount} internal hidden — toggle in the side panel)`}
-              .
+            <div className="px-7 py-16 text-center text-sm text-slate-500">
+              <p>
+                No messages to show
+                {internalCount > 0 &&
+                  ` (${internalCount} internal hidden — toggle in the side panel)`}
+                .
+              </p>
             </div>
           ) : (
             <ol className="divide-y divide-slate-100">
@@ -129,11 +142,11 @@ export function ConversationPreview({
           showInternal={showInternal}
           onToggleShowInternal={setShowInternal}
           internalCount={internalCount}
-          visibleCount={visible.length}
+          visibleCount={exportable.messages.length}
           onExportMarkdown={handleExportMarkdown}
           onExportJson={handleExportJson}
           onExportPdf={handleExportPdf}
-          exportDisabled={visible.length === 0}
+          exportDisabled={exportable.messages.length === 0}
         />
       </div>
 
@@ -141,6 +154,8 @@ export function ConversationPreview({
     </div>
   );
 }
+
+/* ----------------------------- message row ----------------------------- */
 
 interface MessageRowProps {
   message: NormalizedMessage;
@@ -156,36 +171,44 @@ function MessageRow({
   showMessageNumbers,
 }: MessageRowProps) {
   const tone = roleStyles(message.role);
+  const Icon = tone.icon;
   const contentType = (message.metadata?.contentType as string) ?? "text";
   const internal = isInternalMessage(message);
 
   return (
-    <li className="px-6 py-5">
-      <div className="flex items-center gap-2 mb-2 text-xs">
+    <li className={`px-7 py-5 border-l-2 ${tone.leftBorder}`}>
+      <div className="flex items-center gap-2.5 mb-2.5">
         <span
-          className={`uppercase font-semibold tracking-wide px-2 py-0.5 rounded ${tone.badge}`}
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ${tone.avatar}`}
+        >
+          <Icon className="h-3.5 w-3.5" strokeWidth={2.4} />
+        </span>
+        <span
+          className={`text-[10.5px] uppercase font-semibold tracking-wider ${tone.label}`}
         >
           {message.role}
         </span>
         {internal && (
-          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 font-mono">
             {contentType}
           </span>
         )}
         {showMessageNumbers && (
-          <span className="text-slate-400">#{displayIndex + 1}</span>
+          <span className="text-[11px] text-slate-400 font-mono">
+            #{displayIndex + 1}
+          </span>
         )}
         {showTimestamps && message.createdAt && (
-          <span className="text-slate-400 ml-auto">
+          <span className="text-[11px] text-slate-400 ml-auto">
             {formatDateTime(message.createdAt)}
           </span>
         )}
       </div>
       <div
-        className={`prose prose-slate max-w-none prose-sm prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-md prose-code:before:hidden prose-code:after:hidden ${tone.body}`}
+        className={`prose prose-slate max-w-none prose-sm prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-lg prose-code:before:hidden prose-code:after:hidden prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-violet-600 prose-a:no-underline hover:prose-a:underline ${tone.body}`}
       >
         {contentType === "code" || contentType === "execution_output" ? (
-          <pre className="!bg-slate-900 !text-slate-100 rounded-md p-4 overflow-x-auto text-xs leading-relaxed">
+          <pre className="!bg-slate-900 !text-slate-100 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed">
             <code>{message.content}</code>
           </pre>
         ) : (
@@ -198,32 +221,58 @@ function MessageRow({
   );
 }
 
-function roleStyles(role: ChatRole): { badge: string; body: string } {
+/* ------------------------------- role tones ----------------------------- */
+
+interface Tone {
+  icon: LucideIcon;
+  avatar: string;
+  label: string;
+  body: string;
+  leftBorder: string;
+}
+
+function roleStyles(role: ChatRole): Tone {
   switch (role) {
     case "user":
       return {
-        badge: "bg-indigo-100 text-indigo-700",
+        icon: User,
+        avatar:
+          "bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-500/30",
+        label: "text-violet-700",
         body: "text-slate-900",
+        leftBorder: "border-l-violet-500/70",
       };
     case "assistant":
       return {
-        badge: "bg-emerald-100 text-emerald-700",
+        icon: Bot,
+        avatar: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+        label: "text-emerald-700",
         body: "text-slate-800",
+        leftBorder: "border-l-emerald-400/60",
       };
     case "system":
       return {
-        badge: "bg-amber-100 text-amber-800",
-        body: "text-slate-600 italic",
+        icon: Settings,
+        avatar: "bg-amber-100 text-amber-700 border border-amber-200",
+        label: "text-amber-700",
+        body: "text-slate-700 italic",
+        leftBorder: "border-l-amber-400/60",
       };
     case "tool":
       return {
-        badge: "bg-slate-200 text-slate-700",
-        body: "text-slate-600",
+        icon: Wrench,
+        avatar: "bg-slate-100 text-slate-600 border border-slate-200",
+        label: "text-slate-600",
+        body: "text-slate-700",
+        leftBorder: "border-l-slate-300",
       };
     default:
       return {
-        badge: "bg-slate-100 text-slate-500",
-        body: "text-slate-600",
+        icon: HelpCircle,
+        avatar: "bg-slate-100 text-slate-500 border border-slate-200",
+        label: "text-slate-500",
+        body: "text-slate-700",
+        leftBorder: "border-l-slate-200",
       };
   }
 }

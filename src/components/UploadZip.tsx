@@ -1,4 +1,12 @@
 import { useCallback, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  UploadCloud,
+  AlertTriangle,
+  Loader2,
+  XCircle,
+  ShieldCheck,
+} from "lucide-react";
 import { loadZip } from "../lib/zip/readZip";
 import { locateConversationFile } from "../lib/zip/findConversationFile";
 import { parseChatGptExportJson } from "../lib/parsers/parseChatGptExport";
@@ -32,7 +40,6 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
   const processFile = useCallback(
     async (file: File) => {
       setState({ kind: "reading", filename: file.name });
-      // Yield so the "reading" state paints before heavy parsing work.
       await new Promise((r) => setTimeout(r, 0));
       try {
         const zip = await loadZip(file);
@@ -88,13 +95,13 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
   );
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-3xl mx-auto rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-8">
+      <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">
-            Upload ChatGPT Export ZIP
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Upload ChatGPT export ZIP
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
             Get this from ChatGPT &rarr; Settings &rarr; Data Controls &rarr;
             Export data. The ZIP contains <em>all</em> your chats; you'll pick
             one to export in the next step.
@@ -103,9 +110,9 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-sm text-slate-500 hover:text-slate-700"
+          className="shrink-0 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition px-2 py-1 rounded-md hover:bg-slate-100 focus-ring"
         >
-          &larr; Back
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
       </div>
 
@@ -116,10 +123,10 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`block rounded-lg border-2 border-dashed p-12 text-center cursor-pointer transition ${
+        className={`group block rounded-xl border-2 border-dashed p-12 text-center cursor-pointer transition-all ${
           dragOver
-            ? "border-indigo-500 bg-indigo-50"
-            : "border-slate-300 hover:border-slate-400 bg-slate-50"
+            ? "border-violet-500 bg-violet-50/70 scale-[1.01]"
+            : "border-slate-300 hover:border-violet-400 hover:bg-slate-50/60 bg-white/40"
         }`}
       >
         <input
@@ -133,49 +140,62 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
             e.target.value = "";
           }}
         />
-        <p className="text-slate-700 font-medium">
-          Drag and drop your <code>.zip</code> here
+        <div
+          className={`mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl transition ${
+            dragOver
+              ? "bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/30"
+              : "bg-slate-100 text-slate-500 group-hover:bg-violet-100 group-hover:text-violet-700"
+          }`}
+        >
+          <UploadCloud className="h-6 w-6" strokeWidth={2} />
+        </div>
+        <p className="mt-4 text-slate-800 font-medium">
+          Drag and drop your <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">.zip</code> here
         </p>
-        <p className="mt-1 text-sm text-slate-500">or click to choose a file</p>
+        <p className="mt-1 text-sm text-slate-500">
+          or click anywhere in this box to choose a file
+        </p>
       </label>
 
       {state.kind === "confirm-huge" && (
-        <div className="mt-6 rounded-md bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
-          <p className="font-medium">Large file warning</p>
-          <p className="mt-1">
-            <span className="font-mono">{state.file.name}</span> is{" "}
-            {formatMB(state.file.size)}. Parsing and PDF export may take a few
-            seconds and use significant memory. Everything still runs locally
-            in your browser.
-          </p>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const f = state.file;
-                void processFile(f);
-              }}
-              className="rounded-md bg-amber-600 text-white px-3 py-1.5 text-sm font-medium hover:bg-amber-700"
-            >
-              Continue anyway
-            </button>
-            <button
-              type="button"
-              onClick={() => setState({ kind: "idle" })}
-              className="rounded-md border border-amber-300 px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100"
-            >
-              Pick a different file
-            </button>
+        <div className="mt-6 rounded-xl bg-amber-50/80 border border-amber-200 p-4 text-sm text-amber-900 animate-fade-up">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600" />
+            <div className="flex-1">
+              <p className="font-medium">Large file warning</p>
+              <p className="mt-1 leading-relaxed">
+                <span className="font-mono">{state.file.name}</span> is{" "}
+                <span className="font-semibold">{formatMB(state.file.size)}</span>.
+                Parsing and PDF export may take a few seconds and use significant
+                memory. Everything still runs locally in your browser.
+              </p>
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const f = state.file;
+                    void processFile(f);
+                  }}
+                  className="rounded-md bg-amber-600 text-white px-3 py-1.5 text-sm font-medium hover:bg-amber-700 transition focus-ring"
+                >
+                  Continue anyway
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setState({ kind: "idle" })}
+                  className="rounded-md border border-amber-300 px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100 transition focus-ring"
+                >
+                  Pick a different file
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {state.kind === "reading" && (
-        <div className="mt-6 rounded-md bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"
-          />
+        <div className="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 flex items-center gap-3 animate-fade-up">
+          <Loader2 className="h-4 w-4 text-violet-600 animate-spin" />
           <span>
             Reading and parsing{" "}
             <span className="font-mono">{state.filename}</span>&hellip;
@@ -184,22 +204,28 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
       )}
 
       {state.kind === "error" && (
-        <div className="mt-6 rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-          <p className="font-medium">Couldn't process that file</p>
-          <p className="mt-1">{state.message}</p>
-          <button
-            type="button"
-            onClick={() => setState({ kind: "idle" })}
-            className="mt-3 text-red-700 underline"
-          >
-            Try another file
-          </button>
+        <div className="mt-6 rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-900 animate-fade-up">
+          <div className="flex items-start gap-3">
+            <XCircle className="h-5 w-5 shrink-0 mt-0.5 text-rose-600" />
+            <div className="flex-1">
+              <p className="font-medium">Couldn't process that file</p>
+              <p className="mt-1 leading-relaxed">{state.message}</p>
+              <button
+                type="button"
+                onClick={() => setState({ kind: "idle" })}
+                className="mt-3 inline-flex items-center gap-1 text-rose-700 hover:text-rose-900 underline underline-offset-2 transition focus-ring"
+              >
+                Try another file
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      <p className="mt-6 text-xs text-slate-500">
-        The file never leaves your browser. We read it in-memory with JSZip and
-        discard it when you close the tab.
+      <p className="mt-6 inline-flex items-center gap-1.5 text-xs text-slate-500">
+        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+        The file never leaves your browser. Read in-memory with JSZip and
+        discarded when you close the tab.
       </p>
     </div>
   );
