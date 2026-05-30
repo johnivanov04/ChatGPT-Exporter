@@ -14,27 +14,27 @@ interface UploadZipProps {
 
 type State =
   | { kind: "idle" }
+  | { kind: "confirm-huge"; file: File }
   | { kind: "reading"; filename: string }
   | { kind: "error"; message: string };
 
 const HUGE_FILE_BYTES = 100 * 1024 * 1024; // 100 MB
+
+function formatMB(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFile = useCallback(
+  const processFile = useCallback(
     async (file: File) => {
       setState({ kind: "reading", filename: file.name });
       // Yield so the "reading" state paints before heavy parsing work.
       await new Promise((r) => setTimeout(r, 0));
       try {
-        if (file.size > HUGE_FILE_BYTES) {
-          console.warn(
-            "Large export file; parsing and PDF generation may be slow.",
-          );
-        }
         const zip = await loadZip(file);
         const located = await locateConversationFile(zip);
         if (!located) {
@@ -66,12 +66,23 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
     [onLoaded],
   );
 
+  const handleFile = useCallback(
+    (file: File) => {
+      if (file.size > HUGE_FILE_BYTES) {
+        setState({ kind: "confirm-huge", file });
+      } else {
+        void processFile(file);
+      }
+    },
+    [processFile],
+  );
+
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
       const file = e.dataTransfer.files?.[0];
-      if (file) void handleFile(file);
+      if (file) handleFile(file);
     },
     [handleFile],
   );
@@ -118,7 +129,7 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) void handleFile(file);
+            if (file) handleFile(file);
             e.target.value = "";
           }}
         />
@@ -128,10 +139,47 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         <p className="mt-1 text-sm text-slate-500">or click to choose a file</p>
       </label>
 
+      {state.kind === "confirm-huge" && (
+        <div className="mt-6 rounded-md bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+          <p className="font-medium">Large file warning</p>
+          <p className="mt-1">
+            <span className="font-mono">{state.file.name}</span> is{" "}
+            {formatMB(state.file.size)}. Parsing and PDF export may take a few
+            seconds and use significant memory. Everything still runs locally
+            in your browser.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const f = state.file;
+                void processFile(f);
+              }}
+              className="rounded-md bg-amber-600 text-white px-3 py-1.5 text-sm font-medium hover:bg-amber-700"
+            >
+              Continue anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => setState({ kind: "idle" })}
+              className="rounded-md border border-amber-300 px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100"
+            >
+              Pick a different file
+            </button>
+          </div>
+        </div>
+      )}
+
       {state.kind === "reading" && (
-        <div className="mt-6 rounded-md bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700">
-          Reading and parsing <span className="font-mono">{state.filename}</span>
-          &hellip;
+        <div className="mt-6 rounded-md bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="inline-block h-4 w-4 rounded-full border-2 border-slate-300 border-t-indigo-600 animate-spin"
+          />
+          <span>
+            Reading and parsing{" "}
+            <span className="font-mono">{state.filename}</span>&hellip;
+          </span>
         </div>
       )}
 

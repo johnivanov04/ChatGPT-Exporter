@@ -102,8 +102,19 @@ export default function App() {
       </main>
 
       <footer className="no-print border-t border-slate-200 bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-3 text-xs text-slate-500">
-          All parsing happens locally in your browser. No uploads, no accounts.
+        <div className="max-w-6xl mx-auto px-6 py-3 text-xs text-slate-500 flex items-center justify-between gap-4 flex-wrap">
+          <span>
+            All parsing happens locally in your browser. No uploads, no
+            accounts.
+          </span>
+          <a
+            href="https://github.com/johnivanov04/ChatGPT-Exporter"
+            target="_blank"
+            rel="noreferrer"
+            className="text-slate-600 hover:text-slate-900 underline underline-offset-2"
+          >
+            Source on GitHub
+          </a>
         </div>
       </footer>
     </div>
