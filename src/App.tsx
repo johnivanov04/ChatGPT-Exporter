@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Sparkles, ExternalLink } from "lucide-react";
 import { Landing } from "./components/Landing";
 import { UploadZip } from "./components/UploadZip";
@@ -23,13 +23,77 @@ type Stage =
       pickerCtx?: PickerCtx;
     };
 
-export default function App() {
-  const [stage, setStage] = useState<Stage>({ kind: "landing" });
+interface NavState {
+  idx: number;
+}
 
-  const handleBackFromSelected = (pickerCtx?: PickerCtx) => {
-    if (pickerCtx) setStage({ kind: "picker", ...pickerCtx });
-    else setStage({ kind: "landing" });
-  };
+function isNavState(s: unknown): s is NavState {
+  return (
+    typeof s === "object" &&
+    s !== null &&
+    typeof (s as Record<string, unknown>).idx === "number"
+  );
+}
+
+const LANDING: Stage = { kind: "landing" };
+
+export default function App() {
+  const [stage, setStage] = useState<Stage>(LANDING);
+
+  // In-memory stack of stages the user has visited. Forward navigation pushes
+  // onto it (truncating any "future" entries past the cursor). Browser back /
+  // forward moves the cursor via the popstate listener — we never drop entries
+  // on back, so browser forward also restores correctly.
+  const stackRef = useRef<Stage[]>([LANDING]);
+  const cursorRef = useRef(0);
+
+  // Claim ownership of the current history entry on first mount.
+  useEffect(() => {
+    window.history.replaceState({ idx: 0 } satisfies NavState, "");
+  }, []);
+
+  // Browser back / forward → look up the target stage in our stack.
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const targetIdx = isNavState(e.state) ? e.state.idx : 0;
+      cursorRef.current = targetIdx;
+      const target = stackRef.current[targetIdx] ?? LANDING;
+      setStage(target);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const goTo = useCallback((next: Stage) => {
+    // Drop any entries past the current cursor (matches browser behavior:
+    // navigating forward after a back wipes the "forward" branch).
+    stackRef.current = stackRef.current.slice(0, cursorRef.current + 1);
+    stackRef.current.push(next);
+    cursorRef.current = stackRef.current.length - 1;
+    window.history.pushState(
+      { idx: cursorRef.current } satisfies NavState,
+      "",
+    );
+    setStage(next);
+  }, []);
+
+  const goBack = useCallback(() => {
+    if (cursorRef.current > 0) {
+      window.history.back(); // triggers popstate -> setStage
+    } else {
+      setStage(LANDING);
+    }
+  }, []);
+
+  const goHome = useCallback(() => {
+    if (cursorRef.current > 0) {
+      // Pop the browser stack back to the original landing entry so browser
+      // back/forward stay coherent with the in-app journey.
+      window.history.go(-cursorRef.current);
+    } else {
+      setStage(LANDING);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -37,7 +101,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-6 py-3.5 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setStage({ kind: "landing" })}
+            onClick={goHome}
             className="flex items-center gap-2.5 text-left group focus-ring rounded-md"
           >
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-500/30 transition group-hover:shadow-md group-hover:shadow-violet-500/40">
@@ -64,29 +128,30 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10 animate-fade-up">
+      <main
+        key={stage.kind + (stage.kind === "selected" ? `:${stage.conversation.id}` : "")}
+        className="flex-1 max-w-6xl w-full mx-auto px-6 py-10 animate-fade-up"
+      >
         {stage.kind === "landing" && (
           <Landing
-            onChooseZip={() => setStage({ kind: "upload-zip" })}
-            onChoosePaste={() => setStage({ kind: "paste" })}
+            onChooseZip={() => goTo({ kind: "upload-zip" })}
+            onChoosePaste={() => goTo({ kind: "paste" })}
           />
         )}
 
         {stage.kind === "upload-zip" && (
           <UploadZip
             onLoaded={(sourceFile, conversations) =>
-              setStage({ kind: "picker", sourceFile, conversations })
+              goTo({ kind: "picker", sourceFile, conversations })
             }
-            onCancel={() => setStage({ kind: "landing" })}
+            onCancel={goBack}
           />
         )}
 
         {stage.kind === "paste" && (
           <ManualPasteInput
-            onParsed={(conversation) =>
-              setStage({ kind: "selected", conversation })
-            }
-            onCancel={() => setStage({ kind: "landing" })}
+            onParsed={(conversation) => goTo({ kind: "selected", conversation })}
+            onCancel={goBack}
           />
         )}
 
@@ -94,7 +159,7 @@ export default function App() {
           <ConversationPicker
             conversations={stage.conversations}
             onSelect={(conversation) =>
-              setStage({
+              goTo({
                 kind: "selected",
                 conversation,
                 pickerCtx: {
@@ -103,14 +168,14 @@ export default function App() {
                 },
               })
             }
-            onReset={() => setStage({ kind: "landing" })}
+            onReset={goHome}
           />
         )}
 
         {stage.kind === "selected" && (
           <ConversationPreview
             conversation={stage.conversation}
-            onBack={() => handleBackFromSelected(stage.pickerCtx)}
+            onBack={goBack}
           />
         )}
       </main>
