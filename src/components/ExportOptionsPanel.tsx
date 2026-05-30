@@ -7,6 +7,9 @@ interface ExportOptionsPanelProps {
   onToggleShowInternal: (v: boolean) => void;
   internalCount: number;
   visibleCount: number;
+  onExportMarkdown: () => void;
+  onExportJson: () => void;
+  exportDisabled?: boolean;
 }
 
 export function ExportOptionsPanel({
@@ -16,6 +19,9 @@ export function ExportOptionsPanel({
   onToggleShowInternal,
   internalCount,
   visibleCount,
+  onExportMarkdown,
+  onExportJson,
+  exportDisabled,
 }: ExportOptionsPanelProps) {
   const set = (patch: Partial<ExportOptions>) => onChange({ ...options, ...patch });
 
@@ -82,20 +88,26 @@ export function ExportOptionsPanel({
       </Section>
 
       <Section title="Download">
+        <p className="text-xs text-slate-500 mb-2">
+          Exports the {visibleCount} currently-visible message
+          {visibleCount === 1 ? "" : "s"}.
+        </p>
         <div className="space-y-2">
           <button
             type="button"
-            disabled
-            className="w-full rounded-md bg-slate-200 text-slate-500 px-3 py-2 text-sm cursor-not-allowed"
+            onClick={onExportMarkdown}
+            disabled={exportDisabled}
+            className="w-full rounded-md bg-indigo-600 text-white px-3 py-2 text-sm font-medium hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
-            Markdown · M6
+            Download Markdown
           </button>
           <button
             type="button"
-            disabled
-            className="w-full rounded-md bg-slate-200 text-slate-500 px-3 py-2 text-sm cursor-not-allowed"
+            onClick={onExportJson}
+            disabled={exportDisabled}
+            className="w-full rounded-md bg-slate-800 text-white px-3 py-2 text-sm font-medium hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
-            JSON · M6
+            Download JSON
           </button>
           <button
             type="button"

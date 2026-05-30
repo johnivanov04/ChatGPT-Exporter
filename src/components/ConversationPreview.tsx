@@ -11,6 +11,9 @@ import { DEFAULT_EXPORT_OPTIONS } from "../types/conversation";
 import { formatDateTime } from "../lib/utils/date";
 import { isInternalMessage } from "../lib/utils/conversationSummary";
 import { ExportOptionsPanel } from "./ExportOptionsPanel";
+import { exportMarkdown } from "../lib/exporters/exportMarkdown";
+import { exportJson } from "../lib/exporters/exportJson";
+import { downloadFile, safeFilename } from "../lib/utils/downloadFile";
 
 interface ConversationPreviewProps {
   conversation: NormalizedConversation;
@@ -34,6 +37,23 @@ export function ConversationPreview({
     }
     return { visible, internalCount };
   }, [conversation.messages, showInternal]);
+
+  const exportable = useMemo<NormalizedConversation>(
+    () => ({ ...conversation, messages: visible }),
+    [conversation, visible],
+  );
+
+  const baseFilename = safeFilename(conversation.title);
+
+  const handleExportMarkdown = () => {
+    const md = exportMarkdown(exportable, options);
+    downloadFile(`${baseFilename}.md`, md, "text/markdown;charset=utf-8");
+  };
+
+  const handleExportJson = () => {
+    const json = exportJson(exportable, options);
+    downloadFile(`${baseFilename}.json`, json, "application/json;charset=utf-8");
+  };
 
   return (
     <div>
@@ -99,6 +119,9 @@ export function ConversationPreview({
           onToggleShowInternal={setShowInternal}
           internalCount={internalCount}
           visibleCount={visible.length}
+          onExportMarkdown={handleExportMarkdown}
+          onExportJson={handleExportJson}
+          exportDisabled={visible.length === 0}
         />
       </div>
     </div>
