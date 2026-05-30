@@ -3,25 +3,32 @@ import { Landing } from "./components/Landing";
 import { UploadZip } from "./components/UploadZip";
 import { ConversationPicker } from "./components/ConversationPicker";
 import { ConversationPreview } from "./components/ConversationPreview";
+import { ManualPasteInput } from "./components/ManualPasteInput";
 import type { NormalizedConversation } from "./types/conversation";
+
+interface PickerCtx {
+  sourceFile: File;
+  conversations: NormalizedConversation[];
+}
 
 type Stage =
   | { kind: "landing" }
   | { kind: "upload-zip" }
-  | {
-      kind: "picker";
-      sourceFile: File;
-      conversations: NormalizedConversation[];
-    }
+  | { kind: "paste" }
+  | ({ kind: "picker" } & PickerCtx)
   | {
       kind: "selected";
-      sourceFile: File;
-      conversations: NormalizedConversation[];
       conversation: NormalizedConversation;
+      pickerCtx?: PickerCtx;
     };
 
 export default function App() {
   const [stage, setStage] = useState<Stage>({ kind: "landing" });
+
+  const handleBackFromSelected = (pickerCtx?: PickerCtx) => {
+    if (pickerCtx) setStage({ kind: "picker", ...pickerCtx });
+    else setStage({ kind: "landing" });
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -47,9 +54,7 @@ export default function App() {
         {stage.kind === "landing" && (
           <Landing
             onChooseZip={() => setStage({ kind: "upload-zip" })}
-            onChoosePaste={() => {
-              /* M8 */
-            }}
+            onChoosePaste={() => setStage({ kind: "paste" })}
           />
         )}
 
@@ -62,11 +67,27 @@ export default function App() {
           />
         )}
 
+        {stage.kind === "paste" && (
+          <ManualPasteInput
+            onParsed={(conversation) =>
+              setStage({ kind: "selected", conversation })
+            }
+            onCancel={() => setStage({ kind: "landing" })}
+          />
+        )}
+
         {stage.kind === "picker" && (
           <ConversationPicker
             conversations={stage.conversations}
             onSelect={(conversation) =>
-              setStage({ ...stage, kind: "selected", conversation })
+              setStage({
+                kind: "selected",
+                conversation,
+                pickerCtx: {
+                  sourceFile: stage.sourceFile,
+                  conversations: stage.conversations,
+                },
+              })
             }
             onReset={() => setStage({ kind: "landing" })}
           />
@@ -75,13 +96,7 @@ export default function App() {
         {stage.kind === "selected" && (
           <ConversationPreview
             conversation={stage.conversation}
-            onBack={() =>
-              setStage({
-                kind: "picker",
-                sourceFile: stage.sourceFile,
-                conversations: stage.conversations,
-              })
-            }
+            onBack={() => handleBackFromSelected(stage.pickerCtx)}
           />
         )}
       </main>
@@ -94,4 +109,3 @@ export default function App() {
     </div>
   );
 }
-

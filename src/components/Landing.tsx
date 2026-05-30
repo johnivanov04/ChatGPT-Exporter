@@ -31,8 +31,6 @@ export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
           description="Paste a copied transcript. We'll try to detect user/assistant turns."
           status="secondary"
           onClick={onChoosePaste}
-          disabled
-          disabledNote="Coming in M8"
         />
         <Card
           title="Browser Extension"
