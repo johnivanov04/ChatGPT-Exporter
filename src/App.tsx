@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Landing } from "./components/Landing";
 import { UploadZip } from "./components/UploadZip";
 import { ConversationPicker } from "./components/ConversationPicker";
+import { ConversationPreview } from "./components/ConversationPreview";
 import type { NormalizedConversation } from "./types/conversation";
 
 type Stage =
@@ -72,7 +73,7 @@ export default function App() {
         )}
 
         {stage.kind === "selected" && (
-          <SelectedPlaceholder
+          <ConversationPreview
             conversation={stage.conversation}
             onBack={() =>
               setStage({
@@ -94,29 +95,3 @@ export default function App() {
   );
 }
 
-function SelectedPlaceholder({
-  conversation,
-  onBack,
-}: {
-  conversation: NormalizedConversation;
-  onBack: () => void;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-8">
-      <button
-        type="button"
-        onClick={onBack}
-        className="text-sm text-slate-500 hover:text-slate-700"
-      >
-        &larr; Back to list
-      </button>
-      <h2 className="mt-4 text-xl font-semibold text-slate-900">
-        {conversation.title}
-      </h2>
-      <p className="mt-1 text-sm text-slate-600">
-        {conversation.messages.length} messages. The full transcript preview and
-        export options arrive in the next milestone.
-      </p>
-    </div>
-  );
-}

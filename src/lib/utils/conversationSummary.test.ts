@@ -5,6 +5,7 @@ import {
   sortConversationsNewestFirst,
   buildSearchText,
   filterConversations,
+  isInternalMessage,
 } from "./conversationSummary";
 import type {
   NormalizedConversation,
@@ -165,6 +166,49 @@ describe("buildSearchText", () => {
     expect(blob).toContain("what is a basis?");
     expect(blob).toContain("a set");
     expect(blob).toBe(blob.toLowerCase());
+  });
+});
+
+describe("isInternalMessage", () => {
+  const make = (
+    role: NormalizedMessage["role"],
+    contentType?: string,
+  ): NormalizedMessage => ({
+    id: "x",
+    role,
+    content: "x",
+    messageIndex: 0,
+    metadata: contentType ? { contentType } : undefined,
+  });
+
+  it("flags system messages as internal", () => {
+    expect(isInternalMessage(make("system", "text"))).toBe(true);
+  });
+
+  it("flags tool messages as internal regardless of content type", () => {
+    expect(isInternalMessage(make("tool", "thoughts"))).toBe(true);
+    expect(isInternalMessage(make("tool", "execution_output"))).toBe(true);
+    expect(isInternalMessage(make("tool", "tether_browsing_display"))).toBe(true);
+  });
+
+  it("flags assistant/code (tool-call) as internal", () => {
+    expect(isInternalMessage(make("assistant", "code"))).toBe(true);
+  });
+
+  it("does NOT flag assistant/text as internal", () => {
+    expect(isInternalMessage(make("assistant", "text"))).toBe(false);
+  });
+
+  it("does NOT flag assistant/multimodal_text as internal", () => {
+    expect(isInternalMessage(make("assistant", "multimodal_text"))).toBe(false);
+  });
+
+  it("does NOT flag user messages as internal", () => {
+    expect(isInternalMessage(make("user", "text"))).toBe(false);
+  });
+
+  it("treats unknown role with no metadata as non-internal", () => {
+    expect(isInternalMessage(make("unknown"))).toBe(false);
   });
 });
 

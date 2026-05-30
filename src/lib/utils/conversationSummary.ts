@@ -1,4 +1,21 @@
-import type { NormalizedConversation } from "../../types/conversation";
+import type {
+  NormalizedConversation,
+  NormalizedMessage,
+} from "../../types/conversation";
+
+/**
+ * A message is "internal" when it isn't part of the visible user/assistant
+ * dialogue: system prompts, tool messages (thoughts, reasoning recaps,
+ * browsing results, execution output), and assistant tool-calls (code-type
+ * content from the assistant — not assistant-authored markdown code blocks,
+ * which arrive as content_type "text").
+ */
+export function isInternalMessage(message: NormalizedMessage): boolean {
+  if (message.role === "system" || message.role === "tool") return true;
+  const ct = message.metadata?.contentType;
+  if (message.role === "assistant" && ct === "code") return true;
+  return false;
+}
 
 /** Collapses whitespace and truncates to a single-line preview. */
 export function firstUserMessagePreview(
