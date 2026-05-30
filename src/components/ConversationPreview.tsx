@@ -14,6 +14,8 @@ import { ExportOptionsPanel } from "./ExportOptionsPanel";
 import { exportMarkdown } from "../lib/exporters/exportMarkdown";
 import { exportJson } from "../lib/exporters/exportJson";
 import { downloadFile, safeFilename } from "../lib/utils/downloadFile";
+import { PrintView } from "./PrintView";
+import { printConversation } from "../lib/exporters/printPdf";
 
 interface ConversationPreviewProps {
   conversation: NormalizedConversation;
@@ -53,6 +55,10 @@ export function ConversationPreview({
   const handleExportJson = () => {
     const json = exportJson(exportable, options);
     downloadFile(`${baseFilename}.json`, json, "application/json;charset=utf-8");
+  };
+
+  const handleExportPdf = () => {
+    printConversation(baseFilename);
   };
 
   return (
@@ -121,9 +127,12 @@ export function ConversationPreview({
           visibleCount={visible.length}
           onExportMarkdown={handleExportMarkdown}
           onExportJson={handleExportJson}
+          onExportPdf={handleExportPdf}
           exportDisabled={visible.length === 0}
         />
       </div>
+
+      <PrintView conversation={exportable} options={options} />
     </div>
   );
 }

@@ -9,6 +9,7 @@ interface ExportOptionsPanelProps {
   visibleCount: number;
   onExportMarkdown: () => void;
   onExportJson: () => void;
+  onExportPdf: () => void;
   exportDisabled?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function ExportOptionsPanel({
   visibleCount,
   onExportMarkdown,
   onExportJson,
+  onExportPdf,
   exportDisabled,
 }: ExportOptionsPanelProps) {
   const set = (patch: Partial<ExportOptions>) => onChange({ ...options, ...patch });
@@ -111,11 +113,16 @@ export function ExportOptionsPanel({
           </button>
           <button
             type="button"
-            disabled
-            className="w-full rounded-md bg-slate-200 text-slate-500 px-3 py-2 text-sm cursor-not-allowed"
+            onClick={onExportPdf}
+            disabled={exportDisabled}
+            className="w-full rounded-md bg-rose-600 text-white px-3 py-2 text-sm font-medium hover:bg-rose-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
-            PDF · M7
+            Save as PDF
           </button>
+          <p className="text-xs text-slate-500">
+            Opens your browser print dialog &mdash; choose
+            <em> Save as PDF</em> as the destination.
+          </p>
         </div>
       </Section>
     </aside>
