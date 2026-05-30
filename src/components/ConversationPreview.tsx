@@ -16,6 +16,7 @@ import { exportJson } from "../lib/exporters/exportJson";
 import { downloadFile, safeFilename } from "../lib/utils/downloadFile";
 import { PrintView } from "./PrintView";
 import { printConversation } from "../lib/exporters/printPdf";
+import { redactConversation } from "../lib/redaction/redactText";
 
 interface ConversationPreviewProps {
   conversation: NormalizedConversation;
@@ -40,9 +41,13 @@ export function ConversationPreview({
     return { visible, internalCount };
   }, [conversation.messages, showInternal]);
 
+  // Single source of truth: this is what the user sees in the preview AND
+  // what every exporter receives. Redaction is applied here so toggling a
+  // redaction checkbox immediately shows the redacted text in the preview
+  // (WYSIWYG).
   const exportable = useMemo<NormalizedConversation>(
-    () => ({ ...conversation, messages: visible }),
-    [conversation, visible],
+    () => redactConversation({ ...conversation, messages: visible }, options),
+    [conversation, visible, options],
   );
 
   const baseFilename = safeFilename(conversation.title);
@@ -96,7 +101,7 @@ export function ConversationPreview({
             </div>
           </header>
 
-          {visible.length === 0 ? (
+          {exportable.messages.length === 0 ? (
             <div className="px-6 py-10 text-center text-sm text-slate-500">
               No messages to show
               {internalCount > 0 &&
@@ -105,7 +110,7 @@ export function ConversationPreview({
             </div>
           ) : (
             <ol className="divide-y divide-slate-100">
-              {visible.map((m, displayIndex) => (
+              {exportable.messages.map((m, displayIndex) => (
                 <MessageRow
                   key={m.id}
                   message={m}

@@ -113,41 +113,117 @@ describe("redactText - API keys", () => {
   it("does not redact a short string that merely starts with 'sk-'", () => {
     expect(redactText("sk-abc", opts({ redactApiKeys: true }))).toBe("sk-abc");
   });
+
+  it("redacts an Anthropic sk-ant- key", () => {
+    expect(
+      redactText(
+        "sk-ant-aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890",
+        opts({ redactApiKeys: true }),
+      ),
+    ).toBe("[REDACTED_API_KEY]");
+  });
+
+  it("redacts an AWS access key id", () => {
+    expect(
+      redactText("AKIAIOSFODNN7EXAMPLE", opts({ redactApiKeys: true })),
+    ).toBe("[REDACTED_API_KEY]");
+  });
+
+  it("redacts a GitHub fine-grained PAT (github_pat_)", () => {
+    expect(
+      redactText(
+        "github_pat_11AAAAAAA0aBcDeFgHiJkLmNoPq",
+        opts({ redactApiKeys: true }),
+      ),
+    ).toBe("[REDACTED_API_KEY]");
+  });
+
+  it("redacts Stripe live/test secret and publishable keys", () => {
+    const optsOn = opts({ redactApiKeys: true });
+    // Fixtures built at runtime via join so no contiguous
+    // `<prefix>_<env>_<body>` literal appears in source — GitHub's secret
+    // scanner pattern-matches on the full literal, so splitting avoids
+    // false positives without weakening the test.
+    const fakeSecret = ["sk", "live", "FIXTUREaaaaaaaaaaaaaaaaaaaaaa"].join("_");
+    const fakePublishable = ["pk", "test", "FIXTUREaaaaaaaaaaaaaaaaaaaaaa"].join("_");
+    expect(redactText(fakeSecret, optsOn)).toBe("[REDACTED_API_KEY]");
+    expect(redactText(fakePublishable, optsOn)).toBe("[REDACTED_API_KEY]");
+  });
+
+  it("does NOT redact a commit SHA or generic hex string", () => {
+    expect(
+      redactText(
+        "abc123def456abc123def456abc123def456abcd",
+        opts({ redactApiKeys: true }),
+      ),
+    ).toBe("abc123def456abc123def456abc123def456abcd");
+  });
 });
 
 describe("redactText - phone numbers", () => {
+  const phoneOn = opts({ redactPhoneNumbers: true });
+
   it("does not redact when redactPhoneNumbers is false", () => {
     expect(redactText("call 555-123-4567", opts())).toBe("call 555-123-4567");
   });
 
   it("redacts a hyphen-separated US-style number", () => {
-    expect(
-      redactText("555-123-4567", opts({ redactPhoneNumbers: true })),
-    ).toBe("[REDACTED_PHONE]");
+    expect(redactText("555-123-4567", phoneOn)).toBe("[REDACTED_PHONE]");
   });
 
-  it("redacts a dot-separated number", () => {
-    expect(
-      redactText("555.123.4567", opts({ redactPhoneNumbers: true })),
-    ).toBe("[REDACTED_PHONE]");
+  it("redacts a dot-separated US-style number", () => {
+    expect(redactText("555.123.4567", phoneOn)).toBe("[REDACTED_PHONE]");
   });
 
-  // The current regex+heuristic keeps matches with >= 4 non-digit chars;
-  // these formats fall in that bucket, so they survive. Documented behavior.
-  it("KNOWN LIMITATION: parenthesized format is not redacted", () => {
-    const out = redactText(
-      "(555) 123-4567",
-      opts({ redactPhoneNumbers: true }),
+  it("redacts a space-separated US-style number", () => {
+    expect(redactText("555 123 4567", phoneOn)).toBe("[REDACTED_PHONE]");
+  });
+
+  it("redacts the parenthesised US format", () => {
+    expect(redactText("(555) 123-4567", phoneOn)).toBe("[REDACTED_PHONE]");
+    expect(redactText("(555)123-4567", phoneOn)).toBe("[REDACTED_PHONE]");
+  });
+
+  it("redacts +country-code formats", () => {
+    expect(redactText("+1-555-123-4567", phoneOn)).toBe("[REDACTED_PHONE]");
+    expect(redactText("+1 555 123 4567", phoneOn)).toBe("[REDACTED_PHONE]");
+    expect(redactText("+44 20 7946 0958", phoneOn)).toBe("[REDACTED_PHONE]");
+  });
+
+  it("redacts 1-prefixed toll-free numbers", () => {
+    expect(redactText("1-800-555-1234", phoneOn)).toBe("[REDACTED_PHONE]");
+  });
+
+  it("redacts a phone embedded in surrounding text", () => {
+    expect(redactText("call me at 555-123-4567 today", phoneOn)).toBe(
+      "call me at [REDACTED_PHONE] today",
     );
-    expect(out).toContain("555");
   });
 
-  it("KNOWN LIMITATION: +country-prefixed hyphen format is not redacted", () => {
-    const out = redactText(
-      "+1-555-123-4567",
-      opts({ redactPhoneNumbers: true }),
+  it("does NOT redact ISO dates (false-positive guard)", () => {
+    expect(redactText("2026-05-28", phoneOn)).toBe("2026-05-28");
+    expect(redactText("on 2025-12-31 we ship", phoneOn)).toBe(
+      "on 2025-12-31 we ship",
     );
-    expect(out).toContain("555");
+  });
+
+  it("does NOT redact IP addresses (false-positive guard)", () => {
+    expect(redactText("server at 192.168.0.1", phoneOn)).toBe(
+      "server at 192.168.0.1",
+    );
+  });
+
+  it("does NOT redact semver version strings (false-positive guard)", () => {
+    expect(redactText("v1.2.3-release", phoneOn)).toBe("v1.2.3-release");
+    expect(redactText("upgrade to 1.2.3", phoneOn)).toBe("upgrade to 1.2.3");
+  });
+
+  it("does NOT redact a sequence of 4-digit groups (credit-card shape)", () => {
+    // Out of scope for the phone redactor; only emails/phones/api keys are
+    // promised by the spec.
+    expect(redactText("1234 5678 9012 3456", phoneOn)).toBe(
+      "1234 5678 9012 3456",
+    );
   });
 });
 
