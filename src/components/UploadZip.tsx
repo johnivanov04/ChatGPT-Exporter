@@ -16,6 +16,7 @@ import type {
   NormalizedConversation,
   Provider,
 } from "../types/conversation";
+import { HowToExport } from "./HowToExport";
 
 interface UploadZipProps {
   onLoaded: (
@@ -252,6 +253,8 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         The file never leaves your browser. Read in-memory with JSZip and
         discarded when you close the tab.
       </p>
+
+      <HowToExport />
     </div>
   );
 }

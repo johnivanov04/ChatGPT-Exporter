@@ -7,6 +7,7 @@ import {
   FileText,
   type LucideIcon,
 } from "lucide-react";
+import { HowToExport } from "./HowToExport";
 
 interface LandingProps {
   onChooseZip: () => void;
@@ -75,6 +76,10 @@ export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
           title="Handles real exports"
           description="Multimodal, code, reasoning, browsing &mdash; all normalized."
         />
+      </div>
+
+      <div className="mt-8 max-w-3xl mx-auto">
+        <HowToExport />
       </div>
     </div>
   );
