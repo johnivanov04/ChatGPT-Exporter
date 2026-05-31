@@ -185,12 +185,94 @@ describe("locateConversationFile", () => {
     expect(located!.topLevelCount).toBe(1);
   });
 
-  it("throws a user-friendly error when the located file isn't valid JSON", async () => {
-    // Force a name match (PREFERRED_NAMES) but with invalid content so we
-    // exercise the post-locate parse error path.
+  it("returns null when a preferred-name file isn't valid JSON (skipped, not thrown)", async () => {
+    // Multi-provider scan treats invalid JSON candidates as "not a conversation
+    // file" and moves on rather than aborting the whole upload.
     const zip = await zipFrom({ "chats.json": "definitely not json" });
-    await expect(locateConversationFile(zip)).rejects.toThrow(
-      /isn't valid json|format may have changed/i,
-    );
+    await expect(locateConversationFile(zip)).resolves.toBeNull();
+  });
+});
+
+describe("locateConversationFile - multi-provider detection", () => {
+  it("tags a ChatGPT export with provider 'chatgpt'", async () => {
+    const zip = await zipFrom({ "conversations.json": SAMPLE_EXPORT });
+    const located = await locateConversationFile(zip);
+    expect(located?.provider).toBe("chatgpt");
+  });
+
+  it("detects a Claude export by chat_messages shape", async () => {
+    const claudeJson = JSON.stringify([
+      {
+        uuid: "c1",
+        name: "Claude chat",
+        chat_messages: [
+          { uuid: "m1", sender: "human", text: "hi" },
+          { uuid: "m2", sender: "assistant", text: "hello" },
+        ],
+      },
+    ]);
+    const zip = await zipFrom({ "conversations.json": claudeJson });
+    const located = await locateConversationFile(zip);
+    expect(located?.provider).toBe("claude");
+  });
+
+  it("finds Claude data even in a file with a non-standard name", async () => {
+    const claudeJson = JSON.stringify([
+      {
+        uuid: "c1",
+        name: "Claude chat",
+        chat_messages: [{ uuid: "m1", sender: "human", text: "hi" }],
+      },
+    ]);
+    const zip = await zipFrom({ "data-export.json": claudeJson });
+    const located = await locateConversationFile(zip);
+    expect(located?.provider).toBe("claude");
+    expect(located?.filename).toBe("data-export.json");
+  });
+
+  it("detects a Gemini Takeout export at the conventional path", async () => {
+    const geminiJson = JSON.stringify([
+      {
+        header: "Gemini Apps",
+        title: "Asked: hi",
+        time: "2026-05-01T00:00:00Z",
+        products: ["Gemini Apps"],
+      },
+    ]);
+    const zip = await zipFrom({
+      "Takeout/My Activity/Gemini Apps/MyActivity.json": geminiJson,
+    });
+    const located = await locateConversationFile(zip);
+    expect(located?.provider).toBe("gemini");
+  });
+
+  it("detects a Gemini export by header field in any JSON file", async () => {
+    const geminiJson = JSON.stringify([
+      {
+        header: "Bard",
+        title: "Asked: legacy",
+        time: "2024-01-01T00:00:00Z",
+      },
+    ]);
+    const zip = await zipFrom({ "weird-name.json": geminiJson });
+    const located = await locateConversationFile(zip);
+    expect(located?.provider).toBe("gemini");
+  });
+
+  it("prefers ChatGPT preferred names over later JSON files", async () => {
+    const claudeJson = JSON.stringify([
+      {
+        uuid: "c1",
+        name: "Claude",
+        chat_messages: [{ uuid: "m1", sender: "human", text: "x" }],
+      },
+    ]);
+    // Both present; ChatGPT preferred-name should win.
+    const zip = await zipFrom({
+      "alt.json": claudeJson,
+      "conversations.json": SAMPLE_EXPORT,
+    });
+    const located = await locateConversationFile(zip);
+    expect(located?.provider).toBe("chatgpt");
   });
 });

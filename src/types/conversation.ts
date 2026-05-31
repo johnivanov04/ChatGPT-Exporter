@@ -12,8 +12,27 @@ export interface NormalizedMessage {
 
 export type ConversationSource =
   | "chatgpt_export_zip"
+  | "claude_export_zip"
+  | "gemini_takeout"
   | "manual_paste"
   | "browser_extension";
+
+export type Provider = "chatgpt" | "claude" | "gemini";
+
+export function sourceLabel(source: ConversationSource): string {
+  switch (source) {
+    case "chatgpt_export_zip":
+      return "ChatGPT export";
+    case "claude_export_zip":
+      return "Claude export";
+    case "gemini_takeout":
+      return "Gemini (Takeout)";
+    case "manual_paste":
+      return "Manual paste";
+    case "browser_extension":
+      return "Browser extension";
+  }
+}
 
 export interface NormalizedConversation {
   id: string;

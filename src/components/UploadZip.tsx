@@ -10,7 +10,12 @@ import {
 import { loadZip } from "../lib/zip/readZip";
 import { locateConversationFile } from "../lib/zip/findConversationFile";
 import { parseChatGptExportJson } from "../lib/parsers/parseChatGptExport";
-import type { NormalizedConversation } from "../types/conversation";
+import { parseClaudeExportJson } from "../lib/parsers/parseClaudeExport";
+import { parseGeminiActivityJson } from "../lib/parsers/parseGeminiExport";
+import type {
+  NormalizedConversation,
+  Provider,
+} from "../types/conversation";
 
 interface UploadZipProps {
   onLoaded: (
@@ -32,6 +37,24 @@ function formatMB(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function providerLabel(p: Provider): string {
+  return p === "chatgpt" ? "ChatGPT" : p === "claude" ? "Claude" : "Gemini";
+}
+
+function parseForProvider(
+  provider: Provider,
+  rawJson: string,
+): NormalizedConversation[] {
+  switch (provider) {
+    case "chatgpt":
+      return parseChatGptExportJson(rawJson);
+    case "claude":
+      return parseClaudeExportJson(rawJson);
+    case "gemini":
+      return parseGeminiActivityJson(rawJson);
+  }
+}
+
 export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [dragOver, setDragOver] = useState(false);
@@ -48,16 +71,18 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
           setState({
             kind: "error",
             message:
-              "No conversation data found in this ZIP. The export may not include chat history, or ChatGPT's export format may have changed.",
+              "No conversation data found in this ZIP. We look for ChatGPT (conversations.json), Claude (chat_messages), and Gemini Takeout (My Activity/Gemini Apps/MyActivity.json). The export may not include chat history or the format may have changed.",
           });
           return;
         }
-        const conversations = parseChatGptExportJson(located.rawJson);
+        const conversations = parseForProvider(
+          located.provider,
+          located.rawJson,
+        );
         if (conversations.length === 0) {
           setState({
             kind: "error",
-            message:
-              "Found the conversation file but couldn't read any conversations from it. The export format may have changed.",
+            message: `Found a ${providerLabel(located.provider)} export but couldn't read any conversations from it. The format may have changed.`,
           });
           return;
         }
@@ -99,12 +124,12 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Upload ChatGPT export ZIP
+            Upload an export ZIP
           </h2>
           <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
-            Get this from ChatGPT &rarr; Settings &rarr; Data Controls &rarr;
-            Export data. The ZIP contains <em>all</em> your chats; you'll pick
-            one to export in the next step.
+            We auto-detect <strong>ChatGPT</strong>, <strong>Claude</strong>,
+            and <strong>Gemini (Google Takeout)</strong> exports. Drop the ZIP
+            in &mdash; we'll show what we found.
           </p>
         </div>
         <button

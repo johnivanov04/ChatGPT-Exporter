@@ -22,13 +22,14 @@ export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
           browser
         </span>
         <h1 className="mt-5 text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.1]">
-          Turn ChatGPT conversations into{" "}
+          Turn AI conversations into{" "}
           <span className="brand-gradient">clean exports</span>
         </h1>
         <p className="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
-          Drop in your ChatGPT export ZIP, pick a chat, preview it, and download
-          PDF, Markdown, or JSON. Everything runs in this tab &mdash; no backend,
-          no accounts.
+          Drop in your <strong>ChatGPT</strong>, <strong>Claude</strong>, or{" "}
+          <strong>Gemini</strong> export, pick a chat, preview it, and download
+          PDF, Markdown, or JSON. Everything runs in this tab &mdash; no
+          backend, no accounts.
         </p>
       </div>
 
@@ -37,7 +38,7 @@ export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
           icon={FileArchive}
           title="Upload Export ZIP"
           subtitle="Recommended"
-          description="Drop the ZIP from ChatGPT &rarr; Settings &rarr; Data Controls &rarr; Export. We'll let you pick one conversation."
+          description="ChatGPT (conversations.json), Claude (chat_messages), or Gemini (Google Takeout). We auto-detect which provider it's from."
           variant="primary"
           onClick={onChooseZip}
         />
