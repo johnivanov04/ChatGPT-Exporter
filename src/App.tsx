@@ -109,7 +109,7 @@ export default function App() {
             </span>
             <div className="flex flex-col leading-tight">
               <span className="text-[15px] font-semibold tracking-tight text-slate-900">
-                Conversation <span className="brand-gradient">Exporter</span>
+                Chat<span className="brand-gradient">Vault</span>
               </span>
               <span className="text-[11px] text-slate-500">
                 Local-first &middot; private by design
@@ -117,7 +117,7 @@ export default function App() {
             </div>
           </button>
           <a
-            href="https://github.com/johnivanov04/ChatGPT-Exporter"
+            href="https://github.com/johnivanov04/ChatVault"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition px-2.5 py-1.5 rounded-md hover:bg-slate-100 focus-ring"

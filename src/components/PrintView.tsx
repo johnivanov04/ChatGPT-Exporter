@@ -54,8 +54,8 @@ export function PrintView({
             )}
           </dl>
           <p className="print-disclaimer">
-            Exported with ChatGPT Conversation Exporter. Files were processed
-            locally in the browser; review the contents before sharing.
+            Exported with ChatVault. Files were processed locally in your
+            browser; review the contents before sharing.
           </p>
         </section>
       )}

@@ -11,7 +11,7 @@ export interface JsonExportEnvelope {
   conversation: Partial<NormalizedConversation>;
 }
 
-export const EXPORTER_NAME = "chatgpt-conversation-exporter";
+export const EXPORTER_NAME = "chatvault";
 export const EXPORTER_VERSION = "0.1.0";
 
 export function exportJson(
