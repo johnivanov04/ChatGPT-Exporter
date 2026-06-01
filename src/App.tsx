@@ -6,6 +6,10 @@ import { ConversationPicker } from "./components/ConversationPicker";
 import { ConversationPreview } from "./components/ConversationPreview";
 import { ManualPasteInput } from "./components/ManualPasteInput";
 import type { NormalizedConversation } from "./types/conversation";
+import {
+  clearImportHash,
+  tryParseImportHash,
+} from "./lib/import/extensionImport";
 
 interface PickerCtx {
   sourceFile: File;
@@ -47,9 +51,23 @@ export default function App() {
   const stackRef = useRef<Stage[]>([LANDING]);
   const cursorRef = useRef(0);
 
-  // Claim ownership of the current history entry on first mount.
+  // Claim ownership of the current history entry on first mount, and pick
+  // up a conversation handed off by the browser extension via the URL hash.
   useEffect(() => {
-    window.history.replaceState({ idx: 0 } satisfies NavState, "");
+    const imported = tryParseImportHash();
+    if (imported) {
+      clearImportHash();
+      stackRef.current = [
+        LANDING,
+        { kind: "selected", conversation: imported },
+      ];
+      cursorRef.current = 1;
+      window.history.replaceState({ idx: 0 } satisfies NavState, "");
+      window.history.pushState({ idx: 1 } satisfies NavState, "");
+      setStage({ kind: "selected", conversation: imported });
+    } else {
+      window.history.replaceState({ idx: 0 } satisfies NavState, "");
+    }
   }, []);
 
   // Browser back / forward → look up the target stage in our stack.

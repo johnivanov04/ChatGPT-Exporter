@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>ChatVault</title>
+  </head>
+  <body>
+    <header>
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <strong>ChatVault</strong>
+        <small>local-first export</small>
+      </div>
+    </header>
+
+    <main>
+      <p class="lede" id="lede">
+        Export the current ChatGPT conversation to PDF, Markdown, or JSON. We'll open ChatVault with the conversation pre-loaded.
+      </p>
+      <button id="export-btn" type="button">
+        <span class="btn-label">Export this conversation</span>
+        <span class="btn-spinner" aria-hidden="true"></span>
+      </button>
+      <p id="status" class="status" role="status"></p>
+    </main>
+
+    <footer>
+      <a href="https://chatvault.space" target="_blank" rel="noreferrer">Open ChatVault</a>
+      <span class="dot">·</span>
+      <a href="https://github.com/johnivanov04/ChatVault" target="_blank" rel="noreferrer">Source</a>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
