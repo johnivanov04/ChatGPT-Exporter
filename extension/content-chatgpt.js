@@ -37,10 +37,9 @@ function extractConversation() {
     });
   });
 
-  const title = pageTitle();
   return {
     id: `chatgpt-ext-${Date.now()}`,
-    title,
+    title: pageTitle(),
     source: "browser_extension",
     createdAt: new Date().toISOString(),
     messages,
@@ -49,7 +48,6 @@ function extractConversation() {
 }
 
 function pageTitle() {
-  // ChatGPT puts " | ChatGPT" or similar at the end of the document title.
   const raw = document.title.replace(/\s*[—|·-]?\s*ChatGPT\s*$/i, "").trim();
   return raw || "Untitled conversation";
 }
@@ -61,141 +59,9 @@ function normalizeRole(role) {
   return "unknown";
 }
 
-/* ---------------------- HTML → markdown-ish text ---------------------- */
-
 function extractMessageContent(node) {
   // Assistant messages keep their rendered markdown inside a .markdown child;
   // user messages don't have it (they're shown as plain text).
   const target = node.querySelector(".markdown") || node;
-  const out = [];
-  walk(target, out);
-  // Collapse trailing whitespace and 3+ consecutive blank lines.
-  return out.join("").replace(/\n{3,}/g, "\n\n").trim();
-}
-
-function walk(node, out) {
-  if (!node) return;
-  if (node.nodeType === Node.TEXT_NODE) {
-    out.push(node.textContent || "");
-    return;
-  }
-  if (node.nodeType !== Node.ELEMENT_NODE) return;
-  const tag = node.tagName.toLowerCase();
-
-  // Skip ChatGPT UI chrome that shouldn't leak into the export.
-  if (
-    tag === "button" ||
-    node.getAttribute("role") === "button" ||
-    node.classList?.contains("sr-only")
-  ) {
-    return;
-  }
-
-  switch (tag) {
-    case "pre": {
-      const code = node.querySelector("code");
-      const lang = code ? langFromClass(code.className) : "";
-      const body = (code ? code.textContent : node.textContent) || "";
-      out.push(`\n\n\`\`\`${lang}\n${body.replace(/\n+$/, "")}\n\`\`\`\n\n`);
-      return;
-    }
-    case "code":
-      // Inline code (block code is handled above and short-circuits).
-      out.push("`");
-      out.push(node.textContent || "");
-      out.push("`");
-      return;
-    case "br":
-      out.push("\n");
-      return;
-    case "strong":
-    case "b":
-      out.push("**");
-      for (const c of node.childNodes) walk(c, out);
-      out.push("**");
-      return;
-    case "em":
-    case "i":
-      out.push("*");
-      for (const c of node.childNodes) walk(c, out);
-      out.push("*");
-      return;
-    case "a": {
-      out.push("[");
-      for (const c of node.childNodes) walk(c, out);
-      const href = node.getAttribute("href") || "";
-      out.push(`](${href})`);
-      return;
-    }
-    case "h1":
-    case "h2":
-    case "h3":
-    case "h4":
-    case "h5":
-    case "h6": {
-      const level = "#".repeat(Number(tag[1]));
-      out.push(`\n\n${level} `);
-      for (const c of node.childNodes) walk(c, out);
-      out.push("\n\n");
-      return;
-    }
-    case "ul":
-    case "ol": {
-      let idx = 0;
-      for (const child of node.children) {
-        if (child.tagName.toLowerCase() !== "li") continue;
-        idx++;
-        const marker = tag === "ol" ? `${idx}. ` : "- ";
-        out.push("\n" + marker);
-        for (const c of child.childNodes) walk(c, out);
-      }
-      out.push("\n");
-      return;
-    }
-    case "blockquote":
-      out.push("\n> ");
-      for (const c of node.childNodes) walk(c, out);
-      out.push("\n");
-      return;
-    case "p":
-    case "div":
-      for (const c of node.childNodes) walk(c, out);
-      out.push("\n\n");
-      return;
-    case "table": {
-      out.push("\n");
-      const rows = node.querySelectorAll("tr");
-      rows.forEach((row, rowIdx) => {
-        const cells = row.querySelectorAll("th,td");
-        out.push("| ");
-        cells.forEach((c, i) => {
-          out.push((c.textContent || "").trim().replace(/\|/g, "\\|"));
-          if (i < cells.length - 1) out.push(" | ");
-        });
-        out.push(" |\n");
-        if (rowIdx === 0) {
-          out.push("| ");
-          cells.forEach((_, i) => {
-            out.push("---");
-            if (i < cells.length - 1) out.push(" | ");
-          });
-          out.push(" |\n");
-        }
-      });
-      out.push("\n");
-      return;
-    }
-    case "img": {
-      const alt = node.getAttribute("alt") || "image";
-      out.push(`[${alt}]`);
-      return;
-    }
-    default:
-      for (const c of node.childNodes) walk(c, out);
-  }
-}
-
-function langFromClass(className) {
-  const m = /language-([\w+#-]+)/.exec(className || "");
-  return m ? m[1] : "";
+  return window.__chatvaultHtmlToMarkdown(target);
 }

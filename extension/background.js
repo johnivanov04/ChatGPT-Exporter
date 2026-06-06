@@ -4,7 +4,8 @@
 // with the conversation pre-loaded (no file upload needed).
 
 const CHATVAULT_URL = "https://chatvault.space";
-const SUPPORTED_URL_RE = /^https:\/\/(chatgpt\.com|chat\.openai\.com)\//;
+const SUPPORTED_URL_RE =
+  /^https:\/\/(chatgpt\.com|chat\.openai\.com|claude\.ai)\//;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.kind !== "export") return false;
@@ -20,7 +21,7 @@ async function handleExport() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) throw new Error("No active tab.");
   if (!tab.url || !SUPPORTED_URL_RE.test(tab.url)) {
-    throw new Error("Open a ChatGPT conversation tab first.");
+    throw new Error("Open a ChatGPT or Claude conversation tab first.");
   }
   if (typeof tab.id !== "number") {
     throw new Error("Active tab has no id.");
@@ -30,7 +31,7 @@ async function handleExport() {
     response = await chrome.tabs.sendMessage(tab.id, { kind: "extract" });
   } catch {
     throw new Error(
-      "Couldn't reach the page. Reload the ChatGPT tab and try again.",
+      "Couldn't reach the page. Reload the tab and try again.",
     );
   }
   if (!response || response.error) {

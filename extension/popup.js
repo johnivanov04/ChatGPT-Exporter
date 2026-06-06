@@ -7,11 +7,12 @@ async function checkTab() {
     currentWindow: true,
   });
   const supported =
-    !!tab?.url && /^https:\/\/(chatgpt\.com|chat\.openai\.com)\//.test(tab.url);
+    !!tab?.url &&
+    /^https:\/\/(chatgpt\.com|chat\.openai\.com|claude\.ai)\//.test(tab.url);
   if (!supported) {
     btn.disabled = true;
     setStatus(
-      "Open a ChatGPT conversation tab, then click the extension icon there.",
+      "Open a ChatGPT or Claude conversation tab, then click the extension icon there.",
       "error",
     );
   }
