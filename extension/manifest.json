@@ -35,6 +35,7 @@
       "js": [
         "lib/html-to-markdown.js",
         "lib/fetch-attachment.js",
+        "lib/attachment-detection.js",
         "content-chatgpt.js"
       ],
       "run_at": "document_idle"
@@ -44,6 +45,7 @@
       "js": [
         "lib/html-to-markdown.js",
         "lib/fetch-attachment.js",
+        "lib/attachment-detection.js",
         "content-claude.js"
       ],
       "run_at": "document_idle"

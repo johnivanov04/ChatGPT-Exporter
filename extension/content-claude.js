@@ -1,18 +1,11 @@
-// Content script for claude.ai. Same protocol as the ChatGPT script: listens
-// for an "extract" message from the service worker and returns a
-// NormalizedConversation matching ChatVault's schema.
-//
-// Claude's DOM has moved around over time, and the user/assistant message
-// containers often use *different* selectors (e.g. user has a test-id but
-// assistant does not). Strategy: try every known selector for each role
-// independently, combine matches by DOM position, drop any nested duplicates.
+// Content script for claude.ai. Same protocol as the ChatGPT script.
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.kind !== "extract") return false;
   extractConversation()
     .then((conversation) => sendResponse({ conversation }))
     .catch((err) => sendResponse({ error: err?.message ?? String(err) }));
-  return true; // async response
+  return true;
 });
 
 const USER_SELECTORS = [
@@ -37,6 +30,12 @@ const ASSISTANT_SELECTORS = [
 const CDN_HOST_RE =
   /^(?:https?:\/\/)?(?:files\.anthropic\.com|claude\.ai\/api\/|cdn\.anthropic\.com)/i;
 
+function isAttachmentUrl(url) {
+  if (!url) return false;
+  if (url.startsWith("blob:") || url.startsWith("data:")) return true;
+  return CDN_HOST_RE.test(url);
+}
+
 async function extractConversation() {
   const entries = findMessageEntries();
   if (entries.length === 0) {
@@ -48,8 +47,14 @@ async function extractConversation() {
   const messages = [];
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
-    const content = window.__chatvaultHtmlToMarkdown(entry.node);
-    const attachments = await extractAttachments(entry.node);
+    const detected = window.__chatvaultDetectAttachments(
+      entry.node,
+      isAttachmentUrl,
+    );
+    const attachments = await materializeAll(detected);
+    const filenames = detected.map((d) => d.filename);
+    const raw = window.__chatvaultHtmlToMarkdown(entry.node);
+    const content = window.__chatvaultStripAttachmentText(raw, filenames);
     if (!content.trim() && attachments.length === 0) continue;
     messages.push({
       id: `msg-${i}`,
@@ -69,6 +74,23 @@ async function extractConversation() {
     messages,
     metadata: { provider: "claude", extractedFrom: location.href },
   };
+}
+
+async function materializeAll(detected) {
+  const out = [];
+  for (const d of detected) {
+    if (!d.url) {
+      out.push({
+        filename: d.filename,
+        fetchError:
+          "Filename detected but no downloadable URL in the page DOM.",
+      });
+      continue;
+    }
+    const fetched = await window.__chatvaultFetchAttachment(d.url);
+    out.push({ filename: d.filename, ...fetched });
+  }
+  return out;
 }
 
 /* -------------------- selector strategies (in order) -------------------- */
@@ -137,71 +159,6 @@ function pageTitle() {
   return (heading?.textContent || "Untitled conversation").trim();
 }
 
-/* ----------------------------- attachments ---------------------------- */
-
-async function extractAttachments(messageNode) {
-  const seen = new Set();
-  const out = [];
-
-  for (const a of messageNode.querySelectorAll("a[href]")) {
-    const href = a.getAttribute("href");
-    if (!href || seen.has(href)) continue;
-    if (!isAttachmentUrl(href)) continue;
-    seen.add(href);
-    out.push(
-      await materialize(
-        a.getAttribute("download") || textOf(a) || filenameFromUrl(href),
-        href,
-      ),
-    );
-  }
-
-  for (const img of messageNode.querySelectorAll("img[src]")) {
-    const src = img.getAttribute("src") || "";
-    if (!src || seen.has(src)) continue;
-    if (!isAttachmentUrl(src)) continue;
-    seen.add(src);
-    out.push(
-      await materialize(
-        img.getAttribute("alt") ||
-          filenameFromUrl(src) ||
-          `image-${out.length + 1}.png`,
-        src,
-      ),
-    );
-  }
-
-  return out;
-}
-
-function isAttachmentUrl(url) {
-  if (!url) return false;
-  if (url.startsWith("blob:") || url.startsWith("data:")) return true;
-  return CDN_HOST_RE.test(url);
-}
-
-function textOf(node) {
-  return (node.textContent || "").trim();
-}
-
-function filenameFromUrl(url) {
-  try {
-    const u = new URL(url, location.href);
-    const last = u.pathname.split("/").filter(Boolean).pop();
-    return decodeURIComponent(last || "");
-  } catch {
-    return "";
-  }
-}
-
-async function materialize(filename, url) {
-  const safe = filename || "attachment";
-  const fetched = await window.__chatvaultFetchAttachment(url);
-  return { filename: safe, ...fetched };
-}
-
-/* ------------------------- diagnostic dump ---------------------------- */
-
 function debugDumpForMissingAssistant() {
   console.warn(
     "[ChatVault] No assistant messages matched any known selector on claude.ai.",
@@ -218,27 +175,4 @@ function debugDumpForMissingAssistant() {
       (s) => `${s} → ${document.querySelectorAll(s).length}`,
     ),
   );
-  const candidates = [];
-  const main = document.querySelector("main, [role='main']");
-  if (main) {
-    main.querySelectorAll("div, article, section").forEach((el) => {
-      if (candidates.length >= 5) return;
-      if (el.matches(USER_SELECTORS.join(","))) return;
-      const text = (el.textContent || "").trim();
-      if (text.length < 80) return;
-      if (el.children.length < 1 || el.children.length > 30) return;
-      candidates.push({
-        tag: el.tagName,
-        className: el.className,
-        dataset: { ...el.dataset },
-        textPreview: text.slice(0, 80),
-      });
-    });
-  }
-  if (candidates.length > 0) {
-    console.warn(
-      "[ChatVault] Candidate assistant containers (paste these to report a fix):",
-      candidates,
-    );
-  }
 }
