@@ -1,43 +1,44 @@
-// Runs in the PAGE'S MAIN world at document_start. Wraps `fetch` AND
-// `XMLHttpRequest` so attachment-shaped responses (PDFs, images, etc. coming
-// from ChatGPT/Claude file CDNs) get captured and forwarded to the content
-// script via window.postMessage with a base64 payload + filename.
+// Runs in the PAGE'S MAIN world at document_start. Two responsibilities:
 //
-// Verbose `console.debug` calls help diagnose URL-pattern mismatches when
-// the provider changes its CDN paths. Look in DevTools → Console for
-// `[ChatVault bridge]` lines.
+//   (1) Wrap window.fetch + XMLHttpRequest to capture attachment binaries
+//       that the page itself downloads (image previews, fully-streamed PDFs).
+//
+//   (2) When a "file metadata" response is observed (e.g. ChatGPT's
+//       /backend-api/files/download/file_xxx?download_intent=false), parse
+//       the JSON, force a second request with download_intent=true to learn
+//       the signed CDN URL, fetch the binary, and post it to the content
+//       script as a captured attachment.
+//
+// All important events go through `log(...)` which uses console.log so
+// they're visible in DevTools without enabling verbose mode.
 
 (function () {
   if (window.__chatvaultBridgeInstalled) return;
   window.__chatvaultBridgeInstalled = true;
 
-  // Patterns that look like attachment binaries. We deliberately accept many
-  // shapes because providers move things around. We DON'T capture obvious
-  // non-attachment endpoints (conversation API, telemetry, etc.).
-  const ATTACHMENT_URL_PATTERNS = [
-    // ChatGPT
+  const BINARY_URL_PATTERNS = [
+    // Direct ChatGPT/Claude CDN endpoints
     /files\.oaiusercontent\.com/i,
     /cdn\.oaistatic\.com/i,
-    /[\w.]*\.oaiusercontent\.com/i,
-    /chatgpt\.com\/backend-api\/files\//i,
-    /chat\.openai\.com\/backend-api\/files\//i,
-    // Claude
-    /files\.anthropic\.com/i,
-    /claude\.ai\/api\/[^/]+\/files\//i,
-    /claude\.ai\/api\/files\//i,
-    /cdn\.anthropic\.com/i,
-    // Generic CDN-shaped paths for either provider
     /sdmnt-[\w-]+\.oaiusercontent\.com/i,
+    /[\w.]+\.oaiusercontent\.com/i,
+    /files\.anthropic\.com/i,
+    /cdn\.anthropic\.com/i,
+    /claude\.ai\/api\/[^/]+\/files\/[^/]+\/(?:content|download)/i,
   ];
 
-  // Also capture if the response is binary-shaped AND the request came from a
-  // recognised host.
-  const ATTACHMENT_HOST_PATTERNS = [
-    /oaiusercontent\.com/i,
-    /openai\.com/i,
-    /chatgpt\.com/i,
-    /anthropic\.com/i,
-    /claude\.ai/i,
+  // Metadata URLs — JSON responses that describe a file and (sometimes)
+  // contain a `download_url` field. We follow these to get the real binary.
+  const CHATGPT_FILE_META_RE =
+    /^https?:\/\/(?:chatgpt\.com|chat\.openai\.com)\/backend-api\/files\/download\/(file_[a-z0-9]+)/i;
+  // Claude file metadata pattern (placeholder; we'll widen as we learn the
+  // real shape).
+  const CLAUDE_FILE_META_RE =
+    /^https?:\/\/claude\.ai\/api\/[^/]+\/files\/([a-f0-9-]+)\/?$/i;
+
+  // Endpoints we explicitly never follow even though they contain "files".
+  const NEVER_FOLLOW = [
+    /\/backend-api\/files\/library/i, // user's file index — not what we want
   ];
 
   const ATTACHMENT_CONTENT_TYPES = [
@@ -48,6 +49,7 @@
     /^application\/msword/i,
     /^application\/octet-stream/i,
     /^text\/csv/i,
+    /^image\//i,
     /^audio\//i,
     /^video\//i,
   ];
@@ -58,12 +60,12 @@
 
   /* ----------------------------- fetch wrap ----------------------------- */
 
-  const originalFetch = window.fetch;
+  const originalFetch = window.fetch.bind(window);
   window.fetch = async function (...args) {
-    const response = await originalFetch.apply(this, args);
+    const response = await originalFetch(...args);
     try {
       const url = urlOf(args[0]);
-      maybeCapture(url, response.clone());
+      processResponse(url, response.clone());
     } catch (err) {
       log("fetch wrap error", err);
     }
@@ -85,20 +87,11 @@
         try {
           const url = this.__chatvaultUrl || "";
           if (!url) return;
-          if (!looksLikeAttachmentByUrl(url)) {
-            const ct = this.getResponseHeader?.("content-type") || "";
-            if (!looksLikeAttachmentByContentType(ct) || !matchesAttachmentHost(url)) {
-              return;
-            }
-          }
-          // We can only capture the body if it was requested as blob/array.
           if (this.responseType === "blob" && this.response instanceof Blob) {
-            captureBlob(url, this.response, this.getAllResponseHeaders?.() || "");
+            processXhr(url, this.response, this.getAllResponseHeaders?.() || "");
           } else if (this.responseType === "arraybuffer" && this.response) {
             const blob = new Blob([this.response]);
-            captureBlob(url, blob, this.getAllResponseHeaders?.() || "");
-          } else {
-            log("XHR matched but responseType unsupported", this.responseType, url);
+            processXhr(url, blob, this.getAllResponseHeaders?.() || "");
           }
         } catch (err) {
           log("xhr wrap error", err);
@@ -109,46 +102,149 @@
     log("XHR wrapped");
   }
 
-  /* ----------------------------- capture --------------------------------- */
+  /* ------------------------ response router ----------------------------- */
 
-  async function maybeCapture(url, response) {
-    if (!url) return;
-    let matched = looksLikeAttachmentByUrl(url);
-    if (!matched) {
-      const ct = response.headers.get("content-type") || "";
-      if (looksLikeAttachmentByContentType(ct) && matchesAttachmentHost(url)) {
-        matched = true;
-      }
-    }
-    if (!matched) {
-      // Quieter log so DevTools isn't drowned by every fetch.
-      if (matchesAttachmentHost(url)) {
-        log("ignored (didn't match attachment patterns)", url);
-      }
-      return;
-    }
-    if (!response.ok) {
-      log("not ok response", response.status, url);
-      return;
-    }
-    try {
+  async function processResponse(url, response) {
+    if (!url || !response.ok) return;
+    if (NEVER_FOLLOW.some((re) => re.test(url))) return;
+
+    const ct = response.headers.get("content-type") || "";
+
+    // (1) Direct binary on a known attachment URL — capture as-is.
+    if (BINARY_URL_PATTERNS.some((re) => re.test(url))) {
       const blob = await response.blob();
-      await captureBlob(url, blob, rawHeaders(response.headers));
+      await captureBlob(url, blob, response.headers, "(direct CDN)");
+      return;
+    }
+
+    // (2) JSON metadata for a file endpoint — try to follow.
+    if (/json/i.test(ct)) {
+      if (CHATGPT_FILE_META_RE.test(url) || CLAUDE_FILE_META_RE.test(url)) {
+        const text = await response.text();
+        await followMetadata(url, text);
+        return;
+      }
+    }
+
+    // (3) Binary content-type from a recognized host (catch-all).
+    if (ATTACHMENT_CONTENT_TYPES.some((re) => re.test(ct))) {
+      if (/oaiusercontent|openai\.com|chatgpt\.com|anthropic\.com|claude\.ai/i.test(url)) {
+        const blob = await response.blob();
+        await captureBlob(url, blob, response.headers, "(binary CT)");
+        return;
+      }
+    }
+
+    log("ignored (didn't match attachment patterns)", url);
+  }
+
+  async function processXhr(url, blob, rawHeaders) {
+    if (BINARY_URL_PATTERNS.some((re) => re.test(url))) {
+      await captureBlob(url, blob, rawHeaders, "(XHR direct)");
+      return;
+    }
+    log("ignored XHR", url);
+  }
+
+  /* ----------------------- metadata follower ---------------------------- */
+
+  async function followMetadata(metaUrl, jsonText) {
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      log("metadata not JSON", metaUrl);
+      return;
+    }
+
+    let downloadUrl = parsed.download_url || parsed.url || parsed.signed_url;
+    let filename = parsed.file_name || parsed.filename || parsed.name;
+    log("metadata seen", { metaUrl, downloadUrl, filename, keys: Object.keys(parsed) });
+
+    // If the metadata didn't include a download URL, retry with
+    // download_intent=true to coax the server into emitting one.
+    if (!downloadUrl) {
+      try {
+        const forced = new URL(metaUrl);
+        forced.searchParams.set("download_intent", "true");
+        forced.searchParams.set("inline", "false");
+        log("retrying with download_intent=true", forced.toString());
+        const res = await originalFetch(forced.toString(), {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          log("retry failed", res.status);
+          return;
+        }
+        const ct = res.headers.get("content-type") || "";
+        if (/json/i.test(ct)) {
+          const j = await res.json();
+          downloadUrl =
+            j.download_url || j.url || j.signed_url || downloadUrl;
+          filename = filename || j.file_name || j.filename || j.name;
+        } else {
+          // Server returned the binary directly.
+          const blob = await res.blob();
+          await captureBlob(
+            forced.toString(),
+            blob,
+            res.headers,
+            "(retry direct)",
+            filename,
+          );
+          return;
+        }
+      } catch (err) {
+        log("retry error", err);
+        return;
+      }
+    }
+
+    if (!downloadUrl) {
+      log("still no download_url after retry", metaUrl);
+      return;
+    }
+
+    // Now fetch the actual binary from the signed CDN URL.
+    try {
+      const res = await originalFetch(downloadUrl);
+      if (!res.ok) {
+        log("CDN fetch failed", res.status, downloadUrl);
+        return;
+      }
+      const blob = await res.blob();
+      await captureBlob(
+        downloadUrl,
+        blob,
+        res.headers,
+        "(via metadata)",
+        filename,
+      );
     } catch (err) {
-      log("capture error", err, url);
+      log("CDN fetch error", err, downloadUrl);
     }
   }
 
-  async function captureBlob(url, blob, headerBlob) {
+  /* ----------------------------- capture --------------------------------- */
+
+  async function captureBlob(url, blob, headers, sourceTag, forcedFilename) {
     if (!(blob instanceof Blob)) return;
     if (blob.size === 0 || blob.size > MAX_CAPTURE_BYTES) {
       log("skipped (size out of range)", blob.size, url);
       return;
     }
-    const filename = extractFilenameFromHeaders(url, headerBlob);
+    const ct = (blob.type || "").toLowerCase();
+    // Skip 0.4KB JSON-looking responses; they're typically metadata.
+    if (/json/i.test(ct)) {
+      log("skipped (looks like metadata)", `${(blob.size / 1024).toFixed(1)}KB`, url);
+      return;
+    }
+    const filename =
+      forcedFilename || extractFilenameFromHeaders(url, headers);
     const dataBase64 = await blobToBase64(blob);
     log(
       "captured",
+      sourceTag,
       filename || "(no filename)",
       `${(blob.size / 1024).toFixed(1)}KB`,
       blob.type || "(no mime)",
@@ -167,19 +263,6 @@
     );
   }
 
-  /* ---------------------------- predicates ------------------------------- */
-
-  function looksLikeAttachmentByUrl(url) {
-    return ATTACHMENT_URL_PATTERNS.some((re) => re.test(url));
-  }
-  function looksLikeAttachmentByContentType(ct) {
-    if (!ct) return false;
-    return ATTACHMENT_CONTENT_TYPES.some((re) => re.test(ct));
-  }
-  function matchesAttachmentHost(url) {
-    return ATTACHMENT_HOST_PATTERNS.some((re) => re.test(url));
-  }
-
   /* ----------------------------- helpers --------------------------------- */
 
   function urlOf(arg) {
@@ -188,12 +271,6 @@
       return arg.url;
     }
     return "";
-  }
-
-  function rawHeaders(headers) {
-    // Pass headers through extractFilenameFromHeaders as an object; for fetch
-    // we have a Headers instance, for XHR we have the raw header blob string.
-    return headers;
   }
 
   function extractFilenameFromHeaders(url, headers) {
