@@ -26,6 +26,14 @@ import { downloadFile, safeFilename } from "../lib/utils/downloadFile";
 import { PrintView } from "./PrintView";
 import { printConversation } from "../lib/exporters/printPdf";
 import { redactConversation } from "../lib/redaction/redactText";
+import {
+  buildAttachmentsOnlyZip,
+  buildJsonZip,
+  buildMarkdownZip,
+  hasDownloadableAttachments,
+  summarizeAttachments,
+} from "../lib/exporters/buildExportZip";
+import { AttachmentChip } from "./AttachmentChip";
 
 interface ConversationPreviewProps {
   conversation: NormalizedConversation;
@@ -56,19 +64,50 @@ export function ConversationPreview({
   );
 
   const baseFilename = safeFilename(conversation.title);
+  const hasAttachments = useMemo(
+    () => hasDownloadableAttachments(exportable),
+    [exportable],
+  );
+  const attachmentSummary = useMemo(
+    () => summarizeAttachments(exportable),
+    [exportable],
+  );
 
-  const handleExportMarkdown = () => {
-    const md = exportMarkdown(exportable, options);
-    downloadFile(`${baseFilename}.md`, md, "text/markdown;charset=utf-8");
+  const handleExportMarkdown = async () => {
+    if (hasAttachments) {
+      const blob = await buildMarkdownZip(exportable, options, baseFilename);
+      downloadFile(`${baseFilename}.zip`, blob, "application/zip");
+    } else {
+      const md = exportMarkdown(exportable, options);
+      downloadFile(`${baseFilename}.md`, md, "text/markdown;charset=utf-8");
+    }
   };
 
-  const handleExportJson = () => {
-    const json = exportJson(exportable, options);
-    downloadFile(`${baseFilename}.json`, json, "application/json;charset=utf-8");
+  const handleExportJson = async () => {
+    if (hasAttachments) {
+      const blob = await buildJsonZip(exportable, options, baseFilename);
+      downloadFile(`${baseFilename}.zip`, blob, "application/zip");
+    } else {
+      const json = exportJson(exportable, options);
+      downloadFile(
+        `${baseFilename}.json`,
+        json,
+        "application/json;charset=utf-8",
+      );
+    }
   };
 
   const handleExportPdf = () => {
     printConversation(baseFilename);
+  };
+
+  const handleExportAttachmentsZip = async () => {
+    const blob = await buildAttachmentsOnlyZip(exportable, options);
+    downloadFile(
+      `${baseFilename}-attachments.zip`,
+      blob,
+      "application/zip",
+    );
   };
 
   return (
@@ -146,6 +185,10 @@ export function ConversationPreview({
           onExportMarkdown={handleExportMarkdown}
           onExportJson={handleExportJson}
           onExportPdf={handleExportPdf}
+          onExportAttachmentsZip={
+            hasAttachments ? handleExportAttachmentsZip : undefined
+          }
+          attachmentSummary={attachmentSummary}
           exportDisabled={exportable.messages.length === 0}
         />
       </div>
@@ -217,6 +260,13 @@ function MessageRow({
           </ReactMarkdown>
         )}
       </div>
+      {message.attachments && message.attachments.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {message.attachments.map((a, i) => (
+            <AttachmentChip key={`${a.filename}-${i}`} attachment={a} />
+          ))}
+        </div>
+      )}
     </li>
   );
 }

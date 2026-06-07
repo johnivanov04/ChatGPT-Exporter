@@ -6,8 +6,10 @@ import {
   FileText,
   FileJson,
   Printer,
+  Paperclip,
 } from "lucide-react";
 import type { ExportOptions } from "../types/conversation";
+import type { AttachmentSummary } from "../lib/exporters/buildExportZip";
 
 interface ExportOptionsPanelProps {
   options: ExportOptions;
@@ -19,6 +21,8 @@ interface ExportOptionsPanelProps {
   onExportMarkdown: () => void;
   onExportJson: () => void;
   onExportPdf: () => void;
+  onExportAttachmentsZip?: () => void;
+  attachmentSummary?: AttachmentSummary;
   exportDisabled?: boolean;
 }
 
@@ -32,6 +36,8 @@ export function ExportOptionsPanel({
   onExportMarkdown,
   onExportJson,
   onExportPdf,
+  onExportAttachmentsZip,
+  attachmentSummary,
   exportDisabled,
 }: ExportOptionsPanelProps) {
   const set = (patch: Partial<ExportOptions>) =>
@@ -115,6 +121,37 @@ export function ExportOptionsPanel({
           <span className="font-semibold text-slate-700">{visibleCount}</span>{" "}
           currently-visible message{visibleCount === 1 ? "" : "s"}.
         </p>
+        {attachmentSummary && attachmentSummary.total > 0 && (
+          <p className="text-[11px] mb-2.5 leading-relaxed rounded-md bg-violet-50 border border-violet-100 text-violet-800 px-2.5 py-1.5">
+            <Paperclip className="inline h-3 w-3 mr-1 -mt-0.5" />
+            {attachmentSummary.downloadable > 0 ? (
+              <>
+                <span className="font-semibold">
+                  {attachmentSummary.downloadable}
+                </span>{" "}
+                attachment{attachmentSummary.downloadable === 1 ? "" : "s"}{" "}
+                will be bundled into a <code>.zip</code>
+                {attachmentSummary.withErrors > 0 && (
+                  <>
+                    {" "}
+                    &middot;{" "}
+                    <span className="text-amber-700">
+                      {attachmentSummary.withErrors} couldn't be fetched
+                    </span>
+                  </>
+                )}
+                .
+              </>
+            ) : (
+              <>
+                {attachmentSummary.total} attachment
+                {attachmentSummary.total === 1 ? "" : "s"} detected but{" "}
+                <span className="text-amber-700">binary not captured</span>{" "}
+                &mdash; filenames only.
+              </>
+            )}
+          </p>
+        )}
         <div className="space-y-2">
           <button
             type="button"
@@ -140,6 +177,16 @@ export function ExportOptionsPanel({
           >
             <Printer className="h-3.5 w-3.5" /> Save as PDF
           </button>
+          {onExportAttachmentsZip && (
+            <button
+              type="button"
+              onClick={onExportAttachmentsZip}
+              disabled={exportDisabled}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 px-3 py-2 text-xs font-medium hover:border-slate-300 hover:bg-slate-100 transition-all focus-ring"
+            >
+              <Paperclip className="h-3 w-3" /> Attachments only (.zip)
+            </button>
+          )}
         </div>
         <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
           PDF opens your browser print dialog &mdash; pick <em>Save as PDF</em>.
