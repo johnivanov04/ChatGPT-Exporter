@@ -36,7 +36,7 @@
     }
     if (entry.url) byUrl.set(entry.url, entry);
     try {
-      console.debug(
+      console.log(
         "[ChatVault cs] cached attachment",
         d.filename || "(no filename)",
         `${entry.size ? (entry.size / 1024).toFixed(1) + "KB" : ""}`,

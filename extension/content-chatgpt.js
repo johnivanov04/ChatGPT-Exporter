@@ -21,7 +21,7 @@ function isAttachmentUrl(url) {
 
 async function extractConversation() {
   try {
-    console.debug(
+    console.log(
       "[ChatVault cs] starting extract; cache summary:",
       window.__chatvaultCacheSummary?.() ?? "(no summary fn)",
     );

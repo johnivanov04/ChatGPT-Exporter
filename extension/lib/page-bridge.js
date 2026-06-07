@@ -246,7 +246,7 @@
 
   function log(...args) {
     try {
-      console.debug("[ChatVault bridge]", ...args);
+      console.log("[ChatVault bridge]", ...args);
     } catch {
       /* ignore */
     }
