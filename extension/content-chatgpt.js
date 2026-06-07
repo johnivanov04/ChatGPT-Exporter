@@ -84,17 +84,46 @@ function normalizeRole(role) {
 
 async function proactivelyFetchUncached(messageNodes) {
   const fileIds = new Set();
-  const re = /file_[a-z0-9]{16,}/gi;
+  // More permissive — ChatGPT historically used `file-xxx` (dash) too, and
+  // newer IDs may include uppercase characters.
+  const patterns = [
+    /file_[a-zA-Z0-9]{16,}/g,
+    /file-[a-zA-Z0-9]{16,}/g,
+  ];
+  const allHtml = [];
   for (const node of messageNodes) {
     const html = node.outerHTML || "";
-    let m;
-    while ((m = re.exec(html)) !== null) fileIds.add(m[0]);
+    allHtml.push(html);
+    for (const re of patterns) {
+      let m;
+      while ((m = re.exec(html)) !== null) fileIds.add(m[0]);
+    }
   }
-  if (fileIds.size === 0) return;
   console.log(
     "[ChatVault cs] found file_ids in DOM:",
     Array.from(fileIds),
+    fileIds.size === 0 ? "(no file_xxx patterns matched)" : "",
   );
+
+  // Diagnostic: if we have detected-attachment filenames but no file_ids,
+  // dump a snippet of message HTML so we can see what the reference looks
+  // like. Print only the first matched snippet to keep the console readable.
+  if (fileIds.size === 0) {
+    for (const node of messageNodes) {
+      const detected = window.__chatvaultDetectAttachments(
+        node,
+        () => false, // ignore URL detection for this dump
+      );
+      if (detected.length > 0) {
+        console.log(
+          "[ChatVault cs] sample message HTML with attachment but no file_id:",
+          (node.outerHTML || "").slice(0, 4000),
+        );
+        break;
+      }
+    }
+  }
+
   const pending = Array.from(fileIds).map((id) => fetchFileIdViaBridge(id));
   await Promise.all(pending);
 }

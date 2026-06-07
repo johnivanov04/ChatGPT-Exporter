@@ -58,6 +58,10 @@
 
   log("installed at", location.href);
 
+  // Headers captured from the page's own working metadata fetches.
+  // Replayed for on-demand fetches so we get past 403s.
+  let capturedMetaInit = null;
+
   // Listen for "please fetch this file_id" requests from the content script,
   // which uses them to proactively pull attachments that the page itself
   // never bothered to fetch (typically PDFs, since no inline thumbnail).
@@ -68,16 +72,23 @@
     if (!d || d.type !== "chatvault:fetch-file-id-request") return;
     const { requestId, fileId } = d;
     try {
-      const metaUrl = `${location.origin}/backend-api/files/download/${fileId}?download_intent=true&inline=false`;
-      log("on-demand metadata fetch", metaUrl);
-      const res = await originalFetch(metaUrl, { credentials: "include" });
+      // Match the exact URL shape the page uses so we don't trip stricter
+      // server-side validation:
+      //   /backend-api/files/download/{file_id}?post_id=&inline=false&download_intent=false
+      const metaUrl = `${location.origin}/backend-api/files/download/${fileId}?post_id=&inline=false&download_intent=false`;
+      log(
+        "on-demand metadata fetch",
+        metaUrl,
+        capturedMetaInit ? "(with replayed headers)" : "(plain)",
+      );
+      const init = buildOnDemandInit();
+      const res = await originalFetch(metaUrl, init);
       if (res.ok) {
         const ct = res.headers.get("content-type") || "";
         if (/json/i.test(ct)) {
           const text = await res.text();
           await followMetadata(metaUrl, text);
         } else {
-          // Server already returned the binary.
           const blob = await res.blob();
           await captureBlob(metaUrl, blob, res.headers, "(on-demand direct)");
         }
@@ -93,10 +104,60 @@
     );
   });
 
+  function buildOnDemandInit() {
+    if (!capturedMetaInit) {
+      return { credentials: "include" };
+    }
+    // Clone the captured Headers; drop ones that wouldn't transfer cleanly.
+    const headers = new Headers();
+    capturedMetaInit.forEach((value, key) => {
+      const k = key.toLowerCase();
+      if (k === "host" || k === "cookie" || k === "content-length") return;
+      headers.set(key, value);
+    });
+    return { credentials: "include", headers };
+  }
+
+  function captureMetaInit(initOrRequest) {
+    try {
+      if (!initOrRequest) return;
+      // Request object
+      if (typeof Request !== "undefined" && initOrRequest instanceof Request) {
+        capturedMetaInit = new Headers(initOrRequest.headers);
+        return;
+      }
+      // plain init
+      const headers = initOrRequest.headers;
+      if (!headers) return;
+      if (headers instanceof Headers) {
+        capturedMetaInit = new Headers(headers);
+      } else if (Array.isArray(headers)) {
+        capturedMetaInit = new Headers(headers);
+      } else if (typeof headers === "object") {
+        capturedMetaInit = new Headers(headers);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   /* ----------------------------- fetch wrap ----------------------------- */
 
   const originalFetch = window.fetch.bind(window);
   window.fetch = async function (...args) {
+    // Snapshot the request init for metadata calls so we can replay it for
+    // on-demand fetches later.
+    try {
+      const url = urlOf(args[0]);
+      if (
+        CHATGPT_FILE_META_RE.test(url) ||
+        CLAUDE_FILE_META_RE.test(url)
+      ) {
+        captureMetaInit(args[1] || args[0]);
+      }
+    } catch {
+      /* ignore */
+    }
     const response = await originalFetch(...args);
     try {
       const url = urlOf(args[0]);
