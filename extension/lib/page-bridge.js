@@ -62,6 +62,49 @@
   // Replayed for on-demand fetches so we get past 403s.
   let capturedMetaInit = null;
 
+  // file_ids we've already proactively fetched, so we don't hammer the API.
+  const autoFetched = new Set();
+
+  function getConversationIdFromLocation() {
+    const m = /\/c\/([a-zA-Z0-9-]+)/.exec(window.location.pathname);
+    return m ? m[1] : "";
+  }
+
+  function buildMetaUrl(fileId) {
+    const params = new URLSearchParams();
+    const cid = getConversationIdFromLocation();
+    if (cid) params.set("conversation_id", cid);
+    params.set("post_id", "");
+    params.set("inline", "false");
+    params.set("download_intent", "false");
+    return `${location.origin}/backend-api/files/download/${fileId}?${params.toString()}`;
+  }
+
+  async function autoFetchFileId(fileId) {
+    if (autoFetched.has(fileId)) return;
+    autoFetched.add(fileId);
+    try {
+      const metaUrl = buildMetaUrl(fileId);
+      log("auto-prefetch", fileId);
+      const init = buildOnDemandInit();
+      const res = await originalFetch(metaUrl, init);
+      if (!res.ok) {
+        log("auto-prefetch HTTP error", res.status, fileId);
+        return;
+      }
+      const ct = res.headers.get("content-type") || "";
+      if (/json/i.test(ct)) {
+        const text = await res.text();
+        await followMetadata(metaUrl, text);
+      } else {
+        const blob = await res.blob();
+        await captureBlob(metaUrl, blob, res.headers, "(auto-prefetch direct)");
+      }
+    } catch (err) {
+      log("auto-prefetch error", err, fileId);
+    }
+  }
+
   // Listen for "please fetch this file_id" requests from the content script,
   // which uses them to proactively pull attachments that the page itself
   // never bothered to fetch (typically PDFs, since no inline thumbnail).
@@ -72,10 +115,7 @@
     if (!d || d.type !== "chatvault:fetch-file-id-request") return;
     const { requestId, fileId } = d;
     try {
-      // Match the exact URL shape the page uses so we don't trip stricter
-      // server-side validation:
-      //   /backend-api/files/download/{file_id}?post_id=&inline=false&download_intent=false
-      const metaUrl = `${location.origin}/backend-api/files/download/${fileId}?post_id=&inline=false&download_intent=false`;
+      const metaUrl = buildMetaUrl(fileId);
       log(
         "on-demand metadata fetch",
         metaUrl,
@@ -206,6 +246,19 @@
 
     const ct = response.headers.get("content-type") || "";
 
+    // (0) Conversation API response → harvest every file_xxx ID we see and
+    //     proactively fetch each one. The page hits this endpoint on every
+    //     load, so the user gets attachments cached without any clicks.
+    if (
+      /json/i.test(ct) &&
+      /\/backend-api\/conversation\/[a-zA-Z0-9-]{20,}(?:\?|$)/.test(url) &&
+      !/\/init$|\/stream_status|\/textdocs/.test(url)
+    ) {
+      const text = await response.text();
+      harvestFileIdsAndPrefetch(text);
+      return;
+    }
+
     // (1) Direct binary on a known attachment URL — capture as-is.
     if (BINARY_URL_PATTERNS.some((re) => re.test(url))) {
       const blob = await response.blob();
@@ -240,6 +293,25 @@
       return;
     }
     log("ignored XHR", url);
+  }
+
+  function harvestFileIdsAndPrefetch(text) {
+    const ids = new Set();
+    for (const m of text.matchAll(/file_[a-zA-Z0-9]{16,}/g)) ids.add(m[0]);
+    for (const m of text.matchAll(/file-[a-zA-Z0-9]{16,}/g)) ids.add(m[0]);
+    const fresh = Array.from(ids).filter((id) => !autoFetched.has(id));
+    if (fresh.length === 0) return;
+    log(
+      "harvested file_ids from conversation response:",
+      fresh.length,
+      "new of",
+      ids.size,
+      "total",
+    );
+    for (const id of fresh) {
+      // Fire and forget; each call caches on its own.
+      autoFetchFileId(id).catch(() => {});
+    }
   }
 
   /* ----------------------- metadata follower ---------------------------- */
