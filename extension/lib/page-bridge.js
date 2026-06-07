@@ -58,6 +58,41 @@
 
   log("installed at", location.href);
 
+  // Listen for "please fetch this file_id" requests from the content script,
+  // which uses them to proactively pull attachments that the page itself
+  // never bothered to fetch (typically PDFs, since no inline thumbnail).
+  window.addEventListener("message", async (e) => {
+    if (e.source !== window) return;
+    if (e.origin !== window.location.origin) return;
+    const d = e.data;
+    if (!d || d.type !== "chatvault:fetch-file-id-request") return;
+    const { requestId, fileId } = d;
+    try {
+      const metaUrl = `${location.origin}/backend-api/files/download/${fileId}?download_intent=true&inline=false`;
+      log("on-demand metadata fetch", metaUrl);
+      const res = await originalFetch(metaUrl, { credentials: "include" });
+      if (res.ok) {
+        const ct = res.headers.get("content-type") || "";
+        if (/json/i.test(ct)) {
+          const text = await res.text();
+          await followMetadata(metaUrl, text);
+        } else {
+          // Server already returned the binary.
+          const blob = await res.blob();
+          await captureBlob(metaUrl, blob, res.headers, "(on-demand direct)");
+        }
+      } else {
+        log("on-demand metadata HTTP error", res.status, fileId);
+      }
+    } catch (err) {
+      log("on-demand fetch error", err, fileId);
+    }
+    window.postMessage(
+      { type: "chatvault:fetch-file-id-done", requestId },
+      window.location.origin,
+    );
+  });
+
   /* ----------------------------- fetch wrap ----------------------------- */
 
   const originalFetch = window.fetch.bind(window);

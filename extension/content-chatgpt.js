@@ -34,6 +34,13 @@ async function extractConversation() {
       "No messages found on this page. Open a conversation thread first.",
     );
   }
+
+  // Phase 1: collect all file_xxx IDs across the conversation and ask the
+  // bridge to proactively fetch any that aren't already cached (typically
+  // PDFs — ChatGPT doesn't auto-fetch metadata for files without an inline
+  // thumbnail).
+  await proactivelyFetchUncached(nodes);
+
   const messages = [];
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
@@ -73,6 +80,51 @@ function normalizeRole(role) {
   if (r === "user" || r === "assistant" || r === "system" || r === "tool")
     return r;
   return "unknown";
+}
+
+async function proactivelyFetchUncached(messageNodes) {
+  const fileIds = new Set();
+  const re = /file_[a-z0-9]{16,}/gi;
+  for (const node of messageNodes) {
+    const html = node.outerHTML || "";
+    let m;
+    while ((m = re.exec(html)) !== null) fileIds.add(m[0]);
+  }
+  if (fileIds.size === 0) return;
+  console.log(
+    "[ChatVault cs] found file_ids in DOM:",
+    Array.from(fileIds),
+  );
+  const pending = Array.from(fileIds).map((id) => fetchFileIdViaBridge(id));
+  await Promise.all(pending);
+}
+
+function fetchFileIdViaBridge(fileId) {
+  return new Promise((resolve) => {
+    const requestId = `req-${Math.random().toString(36).slice(2)}`;
+    const handler = (e) => {
+      if (e.source !== window) return;
+      if (e.origin !== window.location.origin) return;
+      const d = e.data;
+      if (!d || d.type !== "chatvault:fetch-file-id-done") return;
+      if (d.requestId !== requestId) return;
+      window.removeEventListener("message", handler);
+      resolve();
+    };
+    window.addEventListener("message", handler);
+    window.postMessage(
+      {
+        type: "chatvault:fetch-file-id-request",
+        requestId,
+        fileId,
+      },
+      window.location.origin,
+    );
+    setTimeout(() => {
+      window.removeEventListener("message", handler);
+      resolve();
+    }, 15000);
+  });
 }
 
 function extractMessageContent(node, attachmentFilenames) {
