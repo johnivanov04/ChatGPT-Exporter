@@ -20,6 +20,14 @@ function isAttachmentUrl(url) {
 }
 
 async function extractConversation() {
+  try {
+    console.debug(
+      "[ChatVault cs] starting extract; cache summary:",
+      window.__chatvaultCacheSummary?.() ?? "(no summary fn)",
+    );
+  } catch {
+    /* ignore */
+  }
   const nodes = document.querySelectorAll("[data-message-author-role]");
   if (nodes.length === 0) {
     throw new Error(

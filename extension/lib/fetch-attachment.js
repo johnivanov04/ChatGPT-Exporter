@@ -35,7 +35,23 @@
       byFilename.set(d.filename, entry);
     }
     if (entry.url) byUrl.set(entry.url, entry);
+    try {
+      console.debug(
+        "[ChatVault cs] cached attachment",
+        d.filename || "(no filename)",
+        `${entry.size ? (entry.size / 1024).toFixed(1) + "KB" : ""}`,
+        entry.url,
+      );
+    } catch {
+      /* ignore */
+    }
   });
+
+  window.__chatvaultCacheSummary = function () {
+    const filenames = Array.from(byFilename.keys());
+    const urls = Array.from(byUrl.keys());
+    return { filenames, urls, count: byUrl.size };
+  };
 
   window.__chatvaultCapturedAttachment = function (filename) {
     return filename ? byFilename.get(filename) || null : null;

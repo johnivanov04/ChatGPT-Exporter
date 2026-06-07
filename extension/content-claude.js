@@ -37,6 +37,14 @@ function isAttachmentUrl(url) {
 }
 
 async function extractConversation() {
+  try {
+    console.debug(
+      "[ChatVault cs] starting extract; cache summary:",
+      window.__chatvaultCacheSummary?.() ?? "(no summary fn)",
+    );
+  } catch {
+    /* ignore */
+  }
   const entries = findMessageEntries();
   if (entries.length === 0) {
     throw new Error(
