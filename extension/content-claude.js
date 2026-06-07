@@ -79,16 +79,44 @@ async function extractConversation() {
 async function materializeAll(detected) {
   const out = [];
   for (const d of detected) {
-    if (!d.url) {
+    // 1) Cache: captured by the MAIN-world bridge when the page itself
+    //    fetched the file (image previews, opened PDFs, etc.).
+    const cachedByName = window.__chatvaultCapturedAttachment(d.filename);
+    if (cachedByName) {
       out.push({
         filename: d.filename,
-        fetchError:
-          "Filename detected but no downloadable URL in the page DOM.",
+        dataBase64: cachedByName.dataBase64,
+        mimeType: cachedByName.mimeType,
+        size: cachedByName.size,
       });
       continue;
     }
-    const fetched = await window.__chatvaultFetchAttachment(d.url);
-    out.push({ filename: d.filename, ...fetched });
+    if (d.url) {
+      const cachedByUrl = window.__chatvaultCapturedAttachmentByUrl(d.url);
+      if (cachedByUrl) {
+        out.push({
+          filename: d.filename,
+          dataBase64: cachedByUrl.dataBase64,
+          mimeType: cachedByUrl.mimeType,
+          size: cachedByUrl.size,
+        });
+        continue;
+      }
+    }
+
+    // 2) Direct content-script fetch if we have a URL.
+    if (d.url) {
+      const fetched = await window.__chatvaultFetchAttachment(d.url);
+      out.push({ filename: d.filename, ...fetched });
+      continue;
+    }
+
+    // 3) Nothing worked — ask the user to open the file once.
+    out.push({
+      filename: d.filename,
+      fetchError:
+        "Open the file in the chat (click it) so the page fetches it, then click Export again.",
+    });
   }
   return out;
 }

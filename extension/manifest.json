@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatVault",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Export the current ChatGPT or Claude conversation to PDF, Markdown, or JSON. Local-first.",
   "action": {
     "default_popup": "popup.html",
@@ -32,6 +32,12 @@
   "content_scripts": [
     {
       "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["lib/page-bridge.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       "js": [
         "lib/html-to-markdown.js",
         "lib/fetch-attachment.js",
@@ -39,6 +45,12 @@
         "content-chatgpt.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["lib/page-bridge.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     },
     {
       "matches": ["https://claude.ai/*"],
