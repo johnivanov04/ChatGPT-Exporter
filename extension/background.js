@@ -1,7 +1,10 @@
 // Service worker for the ChatVault extension. Handles "export" messages from
 // the popup: asks the active tab's content script for the current conversation,
-// encodes it as a base64-url URL fragment, and opens the ChatVault web app
-// with the conversation pre-loaded (no file upload needed).
+// stashes it in chrome.storage.local, and opens the ChatVault web app where
+// a bridge content script forwards it to the page via window.postMessage.
+//
+// We use chrome.storage instead of a URL-fragment payload so we can carry
+// arbitrarily-large data (e.g. PDF attachments encoded as base64).
 
 const CHATVAULT_URL = "https://chatvault.space";
 const SUPPORTED_URL_RE =
@@ -30,9 +33,7 @@ async function handleExport() {
   try {
     response = await chrome.tabs.sendMessage(tab.id, { kind: "extract" });
   } catch {
-    throw new Error(
-      "Couldn't reach the page. Reload the tab and try again.",
-    );
+    throw new Error("Couldn't reach the page. Reload the tab and try again.");
   }
   if (!response || response.error) {
     throw new Error(response?.error ?? "Could not extract the conversation.");
@@ -40,22 +41,10 @@ async function handleExport() {
   if (!response.conversation?.messages?.length) {
     throw new Error("No messages found on this page.");
   }
-  const encoded = encodePayload(response.conversation);
-  await chrome.tabs.create({
-    url: `${CHATVAULT_URL}/#import=${encoded}`,
-  });
-  return { ok: true, messageCount: response.conversation.messages.length };
-}
 
-function encodePayload(obj) {
-  const json = JSON.stringify(obj);
-  const bytes = new TextEncoder().encode(json);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  await chrome.storage.local.set({
+    "chatvault.pending": response.conversation,
+  });
+  await chrome.tabs.create({ url: `${CHATVAULT_URL}/#from-extension` });
+  return { ok: true, messageCount: response.conversation.messages.length };
 }

@@ -1,5 +1,18 @@
 export type ChatRole = "user" | "assistant" | "system" | "tool" | "unknown";
 
+export interface NormalizedAttachment {
+  /** Filename as it appears in the source UI (e.g. "EE_CS_148B_HW4.pdf"). */
+  filename: string;
+  /** Best-effort MIME type. */
+  mimeType?: string;
+  /** Size in bytes when known. */
+  size?: number;
+  /** Base64-encoded binary content. Absent when the binary couldn't be fetched. */
+  dataBase64?: string;
+  /** Human-readable reason the binary fetch failed, when applicable. */
+  fetchError?: string;
+}
+
 export interface NormalizedMessage {
   id: string;
   role: ChatRole;
@@ -8,6 +21,7 @@ export interface NormalizedMessage {
   updatedAt?: string;
   messageIndex: number;
   metadata?: Record<string, unknown>;
+  attachments?: NormalizedAttachment[];
 }
 
 export type ConversationSource =

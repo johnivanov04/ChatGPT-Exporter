@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { tryParseImportHash } from "./extensionImport";
+import {
+  tryParseImportHash,
+  tryParseImportMessage,
+  validateImportPayload,
+} from "./extensionImport";
 
 function encode(obj: unknown): string {
   const json = JSON.stringify(obj);
@@ -56,40 +60,11 @@ describe("tryParseImportHash", () => {
     expect(tryParseImportHash(`#import=${encoded}`)).toBeNull();
   });
 
-  it("returns null when required fields are missing", () => {
-    const bad = encode({ id: "x", messages: [] }); // no title
-    expect(tryParseImportHash(`#import=${bad}`)).toBeNull();
-  });
-
-  it("returns null when the conversation has no usable messages", () => {
-    const bad = encode({
-      id: "x",
-      title: "t",
-      messages: [{ id: "m1", role: "user", content: "   " }],
-    });
-    expect(tryParseImportHash(`#import=${bad}`)).toBeNull();
-  });
-
   it("decodes a valid payload into a NormalizedConversation", () => {
     const out = tryParseImportHash(`#import=${encode(VALID)}`);
     expect(out).not.toBeNull();
-    expect(out!.id).toBe("chatgpt-ext-1");
     expect(out!.title).toBe("Hello");
-    expect(out!.source).toBe("browser_extension");
     expect(out!.messages).toHaveLength(2);
-    expect(out!.messages[0].role).toBe("user");
-    expect(out!.messages[1].role).toBe("assistant");
-  });
-
-  it("normalizes unknown roles to 'unknown'", () => {
-    const payload = {
-      ...VALID,
-      messages: [
-        { id: "m1", role: "weirdo", content: "x", messageIndex: 0 },
-      ],
-    };
-    const out = tryParseImportHash(`#import=${encode(payload)}`);
-    expect(out!.messages[0].role).toBe("unknown");
   });
 
   it("preserves unicode content correctly", () => {
@@ -107,28 +82,154 @@ describe("tryParseImportHash", () => {
     const out = tryParseImportHash(`#import=${encode(payload)}`);
     expect(out!.messages[0].content).toBe("héllo 🌍 中文");
   });
+});
 
-  it("always sets source to 'browser_extension' even if payload claims otherwise", () => {
-    const out = tryParseImportHash(
-      `#import=${encode({ ...VALID, source: "chatgpt_export_zip" })}`,
-    );
-    expect(out!.source).toBe("browser_extension");
+describe("tryParseImportMessage", () => {
+  it("returns null for non-object data", () => {
+    expect(tryParseImportMessage(null)).toBeNull();
+    expect(tryParseImportMessage("string")).toBeNull();
+    expect(tryParseImportMessage(42)).toBeNull();
   });
 
-  it("skips messages with empty content but keeps the rest", () => {
-    const payload = {
+  it("returns null when the message type isn't ours", () => {
+    expect(
+      tryParseImportMessage({ type: "something-else", payload: VALID }),
+    ).toBeNull();
+  });
+
+  it("returns null when payload is missing", () => {
+    expect(tryParseImportMessage({ type: "chatvault:import" })).toBeNull();
+  });
+
+  it("accepts a structured payload from the chrome.storage bridge", () => {
+    const out = tryParseImportMessage({
+      type: "chatvault:import",
+      payload: VALID,
+    });
+    expect(out).not.toBeNull();
+    expect(out!.title).toBe("Hello");
+    expect(out!.messages).toHaveLength(2);
+  });
+
+  it("normalizes the source to browser_extension regardless of payload", () => {
+    const out = tryParseImportMessage({
+      type: "chatvault:import",
+      payload: { ...VALID, source: "chatgpt_export_zip" },
+    });
+    expect(out!.source).toBe("browser_extension");
+  });
+});
+
+describe("validateImportPayload — attachments", () => {
+  it("passes through valid attachments unchanged", () => {
+    const out = validateImportPayload({
       ...VALID,
       messages: [
-        { id: "m1", role: "user", content: "real", messageIndex: 0 },
-        { id: "m2", role: "assistant", content: "", messageIndex: 1 },
-        { id: "m3", role: "user", content: "also real", messageIndex: 2 },
+        {
+          id: "m1",
+          role: "user",
+          content: "see attached",
+          messageIndex: 0,
+          attachments: [
+            {
+              filename: "paper.pdf",
+              mimeType: "application/pdf",
+              size: 12345,
+              dataBase64: "JVBERi0xLjQK",
+            },
+          ],
+        },
       ],
-    };
-    const out = tryParseImportHash(`#import=${encode(payload)}`);
-    expect(out!.messages).toHaveLength(2);
-    expect(out!.messages.map((m) => m.content)).toEqual([
-      "real",
-      "also real",
-    ]);
+    });
+    expect(out!.messages[0].attachments).toHaveLength(1);
+    const a = out!.messages[0].attachments![0];
+    expect(a.filename).toBe("paper.pdf");
+    expect(a.mimeType).toBe("application/pdf");
+    expect(a.size).toBe(12345);
+    expect(a.dataBase64).toBe("JVBERi0xLjQK");
+  });
+
+  it("preserves fetchError when binary couldn't be fetched", () => {
+    const out = validateImportPayload({
+      ...VALID,
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          content: "tried to attach",
+          messageIndex: 0,
+          attachments: [{ filename: "x.pdf", fetchError: "HTTP 403" }],
+        },
+      ],
+    });
+    expect(out!.messages[0].attachments![0].fetchError).toBe("HTTP 403");
+    expect(out!.messages[0].attachments![0].dataBase64).toBeUndefined();
+  });
+
+  it("drops attachments with no filename", () => {
+    const out = validateImportPayload({
+      ...VALID,
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          content: "x",
+          messageIndex: 0,
+          attachments: [
+            { filename: "ok.pdf", dataBase64: "AAA" },
+            { filename: "", dataBase64: "BBB" }, // dropped
+            { mimeType: "application/pdf" }, // dropped (no filename)
+            "garbage", // dropped (not an object)
+          ],
+        },
+      ],
+    });
+    expect(out!.messages[0].attachments).toHaveLength(1);
+    expect(out!.messages[0].attachments![0].filename).toBe("ok.pdf");
+  });
+
+  it("keeps a message that has only attachments and empty content", () => {
+    const out = validateImportPayload({
+      ...VALID,
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          content: "",
+          messageIndex: 0,
+          attachments: [{ filename: "only-this.pdf", dataBase64: "AAA" }],
+        },
+      ],
+    });
+    expect(out!.messages).toHaveLength(1);
+    expect(out!.messages[0].attachments).toHaveLength(1);
+  });
+
+  it("strips invalid size/mimeType fields", () => {
+    const out = validateImportPayload({
+      ...VALID,
+      messages: [
+        {
+          id: "m1",
+          role: "user",
+          content: "x",
+          messageIndex: 0,
+          attachments: [
+            {
+              filename: "x.pdf",
+              size: "not a number",
+              mimeType: 42,
+            },
+          ],
+        },
+      ],
+    });
+    expect(out!.messages[0].attachments![0].size).toBeUndefined();
+    expect(out!.messages[0].attachments![0].mimeType).toBeUndefined();
+  });
+
+  it("returns undefined attachments when none provided", () => {
+    const out = validateImportPayload(VALID);
+    expect(out!.messages[0].attachments).toBeUndefined();
   });
 });

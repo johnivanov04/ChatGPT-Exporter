@@ -9,12 +9,10 @@
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.kind !== "extract") return false;
-  try {
-    sendResponse({ conversation: extractConversation() });
-  } catch (err) {
-    sendResponse({ error: err?.message ?? String(err) });
-  }
-  return false;
+  extractConversation()
+    .then((conversation) => sendResponse({ conversation }))
+    .catch((err) => sendResponse({ error: err?.message ?? String(err) }));
+  return true; // async response
 });
 
 const USER_SELECTORS = [
@@ -31,12 +29,15 @@ const ASSISTANT_SELECTORS = [
   ".font-claude-response",
   ".claude-message",
   '[data-message-author-role="assistant"]',
-  '[data-is-streaming]',
+  "[data-is-streaming]",
   ".standard-markdown",
   ".prose",
 ];
 
-function extractConversation() {
+const CDN_HOST_RE =
+  /^(?:https?:\/\/)?(?:files\.anthropic\.com|claude\.ai\/api\/|cdn\.anthropic\.com)/i;
+
+async function extractConversation() {
   const entries = findMessageEntries();
   if (entries.length === 0) {
     throw new Error(
@@ -45,17 +46,20 @@ function extractConversation() {
   }
 
   const messages = [];
-  entries.forEach((entry, i) => {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
     const content = window.__chatvaultHtmlToMarkdown(entry.node);
-    if (!content.trim()) return;
+    const attachments = await extractAttachments(entry.node);
+    if (!content.trim() && attachments.length === 0) continue;
     messages.push({
       id: `msg-${i}`,
       role: entry.role,
       content,
       messageIndex: messages.length,
       metadata: { contentType: "text" },
+      ...(attachments.length > 0 ? { attachments } : {}),
     });
-  });
+  }
 
   return {
     id: `claude-ext-${Date.now()}`,
@@ -70,7 +74,6 @@ function extractConversation() {
 /* -------------------- selector strategies (in order) -------------------- */
 
 function findMessageEntries() {
-  // Pass 1: collect every node matched by any role's selectors.
   const all = [];
   for (const sel of USER_SELECTORS) {
     for (const node of safeSelectAll(sel)) {
@@ -83,9 +86,6 @@ function findMessageEntries() {
     }
   }
 
-  // Pass 2: dedupe by node identity (a node matched by two selectors of the
-  // same role only counts once; if matched by both roles, user wins as a
-  // safer default).
   const byNode = new Map();
   for (const e of all) {
     const prev = byNode.get(e.node);
@@ -94,21 +94,13 @@ function findMessageEntries() {
     }
   }
 
-  // Pass 3: drop nested duplicates. The .prose / .standard-markdown selectors
-  // are deliberately greedy and will match content inside a more-specific
-  // message container; keep only the outermost match.
   let entries = Array.from(byNode.values());
   entries = entries.filter(
     (e) =>
       !entries.some((other) => other !== e && other.node.contains(e.node)),
   );
-
-  // Pass 4: sort by DOM order so the conversation reads chronologically.
   entries = collectByDomOrder(entries);
 
-  // If we found user messages but no assistant ones, dump diagnostic info to
-  // the console — this is exactly the case where Claude's selectors have
-  // changed for the assistant role.
   const counts = entries.reduce(
     (acc, e) => ((acc[e.role] = (acc[e.role] ?? 0) + 1), acc),
     {},
@@ -145,11 +137,72 @@ function pageTitle() {
   return (heading?.textContent || "Untitled conversation").trim();
 }
 
-/* ----------------------- diagnostic dump ------------------------------- */
+/* ----------------------------- attachments ---------------------------- */
+
+async function extractAttachments(messageNode) {
+  const seen = new Set();
+  const out = [];
+
+  for (const a of messageNode.querySelectorAll("a[href]")) {
+    const href = a.getAttribute("href");
+    if (!href || seen.has(href)) continue;
+    if (!isAttachmentUrl(href)) continue;
+    seen.add(href);
+    out.push(
+      await materialize(
+        a.getAttribute("download") || textOf(a) || filenameFromUrl(href),
+        href,
+      ),
+    );
+  }
+
+  for (const img of messageNode.querySelectorAll("img[src]")) {
+    const src = img.getAttribute("src") || "";
+    if (!src || seen.has(src)) continue;
+    if (!isAttachmentUrl(src)) continue;
+    seen.add(src);
+    out.push(
+      await materialize(
+        img.getAttribute("alt") ||
+          filenameFromUrl(src) ||
+          `image-${out.length + 1}.png`,
+        src,
+      ),
+    );
+  }
+
+  return out;
+}
+
+function isAttachmentUrl(url) {
+  if (!url) return false;
+  if (url.startsWith("blob:") || url.startsWith("data:")) return true;
+  return CDN_HOST_RE.test(url);
+}
+
+function textOf(node) {
+  return (node.textContent || "").trim();
+}
+
+function filenameFromUrl(url) {
+  try {
+    const u = new URL(url, location.href);
+    const last = u.pathname.split("/").filter(Boolean).pop();
+    return decodeURIComponent(last || "");
+  } catch {
+    return "";
+  }
+}
+
+async function materialize(filename, url) {
+  const safe = filename || "attachment";
+  const fetched = await window.__chatvaultFetchAttachment(url);
+  return { filename: safe, ...fetched };
+}
+
+/* ------------------------- diagnostic dump ---------------------------- */
 
 function debugDumpForMissingAssistant() {
-  // Print a small report so the user can paste it back when an update breaks
-  // assistant detection.
   console.warn(
     "[ChatVault] No assistant messages matched any known selector on claude.ai.",
   );
@@ -166,8 +219,6 @@ function debugDumpForMissingAssistant() {
     ),
   );
   const candidates = [];
-  // Sample any element on the page that looks like it could be an assistant
-  // turn — large text blocks under main that aren't user messages.
   const main = document.querySelector("main, [role='main']");
   if (main) {
     main.querySelectorAll("div, article, section").forEach((el) => {
@@ -175,8 +226,7 @@ function debugDumpForMissingAssistant() {
       if (el.matches(USER_SELECTORS.join(","))) return;
       const text = (el.textContent || "").trim();
       if (text.length < 80) return;
-      const looksLikeContainer = el.children.length > 0 && el.children.length < 30;
-      if (!looksLikeContainer) return;
+      if (el.children.length < 1 || el.children.length > 30) return;
       candidates.push({
         tag: el.tagName,
         className: el.className,

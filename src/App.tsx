@@ -9,6 +9,7 @@ import type { NormalizedConversation } from "./types/conversation";
 import {
   clearImportHash,
   tryParseImportHash,
+  tryParseImportMessage,
 } from "./lib/import/extensionImport";
 
 interface PickerCtx {
@@ -51,24 +52,39 @@ export default function App() {
   const stackRef = useRef<Stage[]>([LANDING]);
   const cursorRef = useRef(0);
 
+  const acceptImport = useCallback((conversation: NormalizedConversation) => {
+    clearImportHash();
+    stackRef.current = [LANDING, { kind: "selected", conversation }];
+    cursorRef.current = 1;
+    window.history.replaceState({ idx: 0 } satisfies NavState, "");
+    window.history.pushState({ idx: 1 } satisfies NavState, "");
+    setStage({ kind: "selected", conversation });
+  }, []);
+
   // Claim ownership of the current history entry on first mount, and pick
   // up a conversation handed off by the browser extension via the URL hash.
   useEffect(() => {
     const imported = tryParseImportHash();
     if (imported) {
-      clearImportHash();
-      stackRef.current = [
-        LANDING,
-        { kind: "selected", conversation: imported },
-      ];
-      cursorRef.current = 1;
-      window.history.replaceState({ idx: 0 } satisfies NavState, "");
-      window.history.pushState({ idx: 1 } satisfies NavState, "");
-      setStage({ kind: "selected", conversation: imported });
+      acceptImport(imported);
     } else {
       window.history.replaceState({ idx: 0 } satisfies NavState, "");
     }
-  }, []);
+  }, [acceptImport]);
+
+  // The bridge content script (extension/content-chatvault.js) posts a
+  // `chatvault:import` message after pulling the payload out of
+  // chrome.storage. We trust only same-origin messages.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const imported = tryParseImportMessage(e.data);
+      if (!imported) return;
+      acceptImport(imported);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [acceptImport]);
 
   // Browser back / forward → look up the target stage in our stack.
   useEffect(() => {
