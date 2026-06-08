@@ -248,6 +248,7 @@ async function harvestClaudeFileIndex() {
     }
     const json = await res.json();
     const byFilename = new Map();
+    let firstSample = null;
     const collectFiles = (obj) => {
       if (!obj || typeof obj !== "object") return;
       if (Array.isArray(obj)) {
@@ -255,22 +256,51 @@ async function harvestClaudeFileIndex() {
         return;
       }
       const name = obj.file_name || obj.filename || obj.name;
-      const id = obj.file_uuid || obj.uuid || obj.id;
-      if (
-        typeof name === "string" &&
-        typeof id === "string" &&
-        /\.[a-zA-Z0-9]{1,10}$/.test(name) &&
-        /^[a-f0-9-]{8,}$/i.test(id)
-      ) {
-        byFilename.set(name, id);
+      if (typeof name === "string" && /\.[a-zA-Z0-9]{1,10}$/.test(name)) {
+        const existing = byFilename.get(name) || {};
+        const id = obj.file_uuid || obj.uuid || obj.id;
+        if (typeof id === "string" && /^[a-f0-9-]{8,}$/i.test(id)) {
+          existing.fileId = id;
+        }
+        // Claude inlines extracted text for many file types — look for it.
+        for (const key of [
+          "extracted_content",
+          "extracted_text",
+          "content",
+          "text",
+          "file_content",
+          "preview_content",
+        ]) {
+          const v = obj[key];
+          if (typeof v === "string" && v.length > 0 && !existing.text) {
+            existing.text = v;
+            existing.textField = key;
+          }
+        }
+        byFilename.set(name, existing);
+        if (!firstSample) {
+          firstSample = { name, keys: Object.keys(obj) };
+        }
       }
       for (const v of Object.values(obj)) collectFiles(v);
     };
     collectFiles(json);
+    if (firstSample) {
+      console.log(
+        "[ChatVault cs] sample file object keys:",
+        firstSample.name,
+        "→",
+        firstSample.keys.join(", "),
+      );
+    }
+    const withText = Array.from(byFilename.values()).filter((e) => e.text)
+      .length;
     console.log(
       "[ChatVault cs] harvest found",
       byFilename.size,
-      "file(s) in conv api for org",
+      "file(s),",
+      withText,
+      "with inlined text, for org",
       orgId.slice(0, 8),
     );
     return { orgId, byFilename };
@@ -476,15 +506,33 @@ async function materializeAll(detected) {
       }
     }
 
-    // 2.5) Claude file-index lookup: try the file endpoint(s) directly using
-    //      the file_uuid we harvested from the conversation API. Logs the
-    //      response shape of each so we can adapt to whatever Claude returns.
+    // 2.5) Claude file-index lookup. Prefers inlined `extracted_content` /
+    //      similar text fields, since Claude doesn't expose the raw blob
+    //      for many file types (.mlx, .m, .ipynb, .mat — only the extracted
+    //      text the model actually consumed). Falls back to probing file
+    //      endpoints in case the text isn't inlined (e.g. PDFs).
     if (claudeFileIndex) {
-      const fileId = claudeFileIndex.byFilename.get(d.filename);
-      if (fileId) {
+      const entry = claudeFileIndex.byFilename.get(d.filename);
+      if (entry?.text) {
+        console.log(
+          "[ChatVault cs] using inlined",
+          entry.textField,
+          "for",
+          d.filename,
+          `(${entry.text.length} chars)`,
+        );
+        out.push({
+          filename: d.filename,
+          dataBase64: textToB64(entry.text),
+          mimeType: "text/plain; charset=utf-8",
+          size: entry.text.length,
+        });
+        continue;
+      }
+      if (entry?.fileId) {
         const success = await probeClaudeFileEndpoints(
           claudeFileIndex.orgId,
-          fileId,
+          entry.fileId,
           d.filename,
         );
         if (success) {
