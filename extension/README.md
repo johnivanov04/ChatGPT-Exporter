@@ -1,13 +1,13 @@
 # ChatVault — browser extension
 
-One-click export of the current **ChatGPT** or **Claude** conversation to ChatVault. Scrapes the rendered DOM, normalizes it into the same schema as the ZIP-import path, and opens the web app with the conversation pre-loaded.
+One-click export of the current **ChatGPT** or **Claude** conversation to ChatVault. Scrapes the rendered DOM, captures attachment binaries via in-page fetch interception, normalizes everything into the same schema as the ZIP-import path, and opens the web app with the conversation pre-loaded.
 
 ## Status
 
-v0.2.0. Supports:
+v0.5.0. Supports:
 
-- **chatgpt.com** and **chat.openai.com**
-- **claude.ai**
+- **chatgpt.com** and **chat.openai.com** — full attachment capture (text, images, PDFs, MLX, IPYNB, any file type)
+- **claude.ai** — text + DOM-anchored attachments; binary capture works for anything the page renders inline
 
 A Gemini scraper is a future thing — Gemini's structure differs more, and the Takeout ZIP path covers most use cases already.
 
@@ -23,30 +23,95 @@ A Gemini scraper is a future thing — Gemini's structure differs more, and the 
 
 1. Open a conversation on ChatGPT or Claude.
 2. Click the ChatVault icon → **Export this conversation**.
-3. A new tab opens at <https://chatvault.space> with the conversation already loaded in the preview screen. Tweak options and download as PDF, Markdown, or JSON.
+3. A new tab opens at <https://chatvault.space> with the conversation already loaded in the preview screen. Tweak options and download as PDF, Markdown, or JSON (`.zip` containing the markdown/JSON plus an `attachments/` folder when any binaries were captured).
 
-## How it works
+## Architecture
 
-- **`manifest.json`** — MV3 manifest. Host permissions scoped to `chatgpt.com`, `chat.openai.com`, and `claude.ai` only.
-- **`lib/html-to-markdown.js`** — shared DOM walker. Converts rendered HTML to markdown-ish text (preserves code fences with language tags, lists, headings, bold/italic, links, tables, blockquotes, images). Exposed as `window.__chatvaultHtmlToMarkdown(node)`.
-- **`content-chatgpt.js`** — runs on ChatGPT pages. Walks every `[data-message-author-role]` node, extracts role + content via the shared walker.
-- **`content-claude.js`** — runs on Claude pages. Tries several selectors in order: `[data-testid="user-message"]` / `[data-testid="assistant-message"]` first, then `.font-user-message` / `.font-claude-message`, then a generic `main .group` fallback alternating user/assistant by DOM order.
-- **`background.js`** — service worker. On a popup "export" message, sends `{kind: "extract"}` to the active tab's content script, base64url-encodes the returned JSON, and opens `https://chatvault.space/#import=<payload>`.
-- **`popup.html` / `popup.js` / `popup.css`** — small UI: title + one button + status line. Greys out the button when not on a supported tab.
+The extension has two scripts running in different worlds and a small popup:
+
+```
+┌──────────────────────────────────────────────┐
+│  PAGE MAIN world (lib/page-bridge.js)        │
+│  – wraps window.fetch + XMLHttpRequest       │
+│  – captures attachment binaries              │
+│  – harvests file_ids from conversation API   │
+│  – auto-prefetches; replays page headers     │
+│  – follows download_url → CDN binary         │
+└──────────────────────────────────────────────┘
+                  ↓ window.postMessage
+┌──────────────────────────────────────────────┐
+│  ISOLATED world (per-provider content js)    │
+│  – DOM walk → NormalizedConversation         │
+│  – attachment detection (any file extension) │
+│  – auto-click for uncached attachments       │
+│  – orphan sweep by file_id                   │
+└──────────────────────────────────────────────┘
+                  ↓ chrome.runtime.sendMessage
+┌──────────────────────────────────────────────┐
+│  background.js (service worker)              │
+│  – stores conversation in chrome.storage     │
+│  – opens chatvault.space/#from-extension     │
+└──────────────────────────────────────────────┘
+                  ↓
+┌──────────────────────────────────────────────┐
+│  content-chatvault.js (bridge on our domain) │
+│  – reads chrome.storage                      │
+│  – window.postMessage to web app             │
+└──────────────────────────────────────────────┘
+                  ↓
+              ChatVault preview screen
+```
+
+## Attachment capture flow
+
+ChatGPT (and Claude) gate file binaries behind auth tokens we can't replicate from outside the page. The extension works around that with five strategies, applied in order:
+
+1. **Passive interception** — the page renders inline images/thumbnails, and the bridge intercepts those fetches, reading the filename from `Content-Disposition`. Free capture, no clicks.
+2. **Conversation API harvest** — the bridge reads `/backend-api/conversation/{id}` to find every `file_xxx` ID referenced in the chat.
+3. **Auto-prefetch** — for each harvested file_id, the bridge calls the metadata endpoint with replayed request headers and follows the resulting CDN URL. Works for files the API will serve without per-request tokens.
+4. **Auto-click** — for anything still missing, the content script finds the attachment card in the message DOM (button/link/cursor:pointer element containing the filename) and dispatches a click. The page's own React Query layer fetches the binary with proper auth; the bridge intercepts; the modal is dismissed via Escape + close-button fallback.
+5. **Orphan sweep** — at the end of extraction, any cached binary not already attached to a message is matched by `file_id` against each message's DOM and attached to the right one.
+
+## File files
+
+- **`manifest.json`** — MV3, scoped host permissions, three content_scripts entries (MAIN world bridge, isolated content scripts, and a small bridge on chatvault.space for the storage handoff).
+- **`lib/page-bridge.js`** — runs in the page's MAIN world at `document_start`. Wraps `fetch` and `XMLHttpRequest`, captures responses from known CDN/file URLs (`oaiusercontent.com`, `chatgpt.com/backend-api/estuary/...`, `files.anthropic.com`, etc.), follows JSON metadata responses to their `download_url`, captures filenames from `Content-Disposition`, and exposes an on-demand fetch listener for the content script.
+- **`lib/html-to-markdown.js`** — shared DOM → markdown walker. Handles code fences with language tags, lists, headings, bold/italic, links, tables, blockquotes.
+- **`lib/fetch-attachment.js`** — isolated-world cache that mirrors the bridge's captures. Exposes `__chatvaultCapturedAttachment(filename)` and `__chatvaultCapturedAttachmentByUrl(url)`.
+- **`lib/attachment-detection.js`** — finds attachment-shaped things in a message DOM: anchor tags + image tags with attachment URLs, plus a card-based heuristic that matches any `filename.ext` pattern (where ext is 2-10 alphanumeric chars) inside a compact container. Skips text inside `<code>`/`<pre>`/`<kbd>`/`<samp>` to avoid false positives.
+- **`lib/auto-click.js`** — for uncached detected attachments, finds a clickable element (button / link / role=button / cursor:pointer) whose text or `aria-label` contains the filename, dispatches a click, waits for the bridge to populate the cache, then dismisses the modal.
+- **`content-chatgpt.js` / `content-claude.js`** — per-provider message extractor + orchestrator. Calls the libraries above in order: detect → proactively fetch → auto-click → orphan sweep.
+- **`content-chatvault.js`** — runs on chatvault.space; pulls the pending conversation out of `chrome.storage.local` and posts it to the web app.
+- **`background.js`** — service worker. Receives "export" from the popup, talks to the active tab's content script, stores the conversation in `chrome.storage.local`, opens chatvault.space.
+- **`popup.html` / `popup.js` / `popup.css`** — small UI: title + one button + status line.
 
 ## Data flow
 
 ```
-ChatGPT or Claude tab DOM
-        ↓ (content-*.js + html-to-markdown.js)
-    NormalizedConversation
-        ↓ (background.js, base64url-encode)
-chatvault.space/#import=<payload>
-        ↓ (App.tsx tryParseImportHash)
-    preview screen
+ChatGPT / Claude tab
+  │
+  ├─► page-bridge.js (MAIN world)
+  │   captures file binaries → window.postMessage
+  │
+  ├─► content-{chatgpt,claude}.js (isolated world)
+  │   message DOM → NormalizedConversation
+  │   + attachments from cache
+  │
+  └─► background.js
+      chrome.storage.local.set({"chatvault.pending": conversation})
+      open https://chatvault.space/#from-extension
+              │
+              ▼
+     content-chatvault.js on chatvault.space
+              │
+              ▼
+     window.postMessage to App.tsx
+              │
+              ▼
+     Preview screen with chips + downloads
 ```
 
-The URL fragment (`#...`) is purely client-side — it is never sent to any server.
+The chrome.storage handoff means there's no URL fragment size limit — multi-MB PDFs and other large binaries pass cleanly.
 
 ## Regenerating icons
 
@@ -60,6 +125,7 @@ Tweak the `FILL` constant in that file to recolor.
 
 ## Caveats
 
-- DOM scraping is fragile. ChatGPT and Claude can change their markup and break the content scripts anytime. The Claude script tries three selector strategies in order, so it's a bit more resilient, but a redesign can still take it down. If "Export this conversation" returns "No messages found", the markup probably changed.
-- Long conversations encode to large URL fragments. Chrome handles many megabytes in a URL fragment, so this only matters in extreme cases.
-- The extension does not include any backend, telemetry, or analytics. It cannot make network requests anywhere except to open ChatVault as a new tab.
+- **DOM scraping is fragile.** ChatGPT and Claude can change their markup and break the content scripts anytime. Auto-click is the most exposed surface — if a provider redesigns its attachment viewer or modal-close behavior, the binary capture will silently fall back to "filename only".
+- **Per-request auth.** The auto-prefetch path returns 404/422 for some files because the provider's API requires per-click sentinel tokens. Auto-click works around this by using the page's own session.
+- **Auto-click flicker.** Documents (PDFs, MLX, IPYNB, etc.) trigger a brief modal-open / modal-close per file during export. Capped at 10 to bound the disruption.
+- **No backend, no telemetry, no analytics.** The extension's only network destination outside the AI provider's domain is opening chatvault.space as a new tab.

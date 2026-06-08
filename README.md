@@ -1,30 +1,36 @@
 # ChatVault
 
-A local-first web app that converts AI chat conversations into clean **PDF**, **Markdown**, and **JSON** files. Drop in your **ChatGPT**, **Claude**, or **Gemini** export, pick a chat, preview it, and download. Everything happens in your browser — no backend, no accounts, no uploads.
+> Local-first AI conversation exporter. Live at **<https://chatvault.space>**.
 
-## Features
+Converts ChatGPT / Claude / Gemini chats into clean **PDF**, **Markdown**, or **JSON** files. Drop in a data-export ZIP, paste a transcript, or one-click export from a chat tab with the browser extension. Everything happens in your browser — no backend, no accounts, no uploads.
 
-- **Multi-provider** — auto-detects ChatGPT (`conversations.json`), Claude (`chat_messages`), and Gemini (Google Takeout `My Activity/Gemini Apps/MyActivity.json`). Each provider has a dedicated parser tuned to its real content shape.
-- **ChatGPT** — handles every content type seen in real exports (text, multimodal with images, code, execution output, thoughts, reasoning recaps, browsing). Walks the `current_node` parent chain to follow the displayed thread.
-- **Claude** — content blocks (`text`, `image`, `tool_use`, `tool_result`) flattened into clean text. `human` → `user`. Attachments and files surfaced as `[attached: name]`.
-- **Gemini** — Takeout activity log grouped into sessions by time gap. Best-effort classification by title prefix (`Asked:`/`Gemini said:`).
-- **Manual paste fallback** — recognizes classic `User:` / `[User]` / `Assistant:` markers, modern `You said:` / `ChatGPT said:` labels, plus a heuristic strategy for plain page-copies (uses attachment filenames and `Thought for X` markers as structural anchors).
-- **Searchable picker** — sort newest first, AND-of-terms search across title and message content.
-- **Transcript preview** — role-distinguished messages with avatar icons, markdown rendered (paragraphs, lists, code fences, GFM tables), toggleable "internal" filter that hides system/tool/reasoning noise by default.
-- **Three exporters** — driven by the same option toggles (front-page metadata, timestamps, message numbers, source metadata, redaction). What you see is what you download.
-- **Best-effort redaction** — emails, phone numbers (multiple formats with date/IP/version-string guards), and provider-specific API keys (OpenAI, Anthropic, AWS, Stripe, GitHub PATs, Google, Slack). WYSIWYG: the preview shows redactions live.
-- **PDF via browser print** — clean cover page + serif transcript body, page-break-friendly, code blocks legible on paper.
-- **In-app export guides** — step-by-step instructions for getting your ZIP from each provider, with the actual URLs.
-- **Browser back/forward** integrated with the stage flow.
+## What you can do with it
+
+- **Upload a data-export ZIP** from any of ChatGPT, Claude, or Gemini (Google Takeout). Auto-detects which provider and uses the right parser.
+- **Paste a transcript** as a fallback. Recognizes `User:` / `[User]` / `You said:` markers and falls back to a heuristic for ChatGPT page copies (attachment filenames + `Thought for X` markers as structural anchors).
+- **Use the browser extension** to export your *current* ChatGPT or Claude tab in one click — including attached files (PDFs, images, MLX, IPYNB, any extension). See [`extension/README.md`](extension/README.md) for the architecture.
+- **Preview** the full transcript with markdown rendering and role-distinguished messages, then download as PDF / Markdown / JSON (or `.zip` when attachments are present, containing the markdown/JSON plus an `attachments/` folder).
+- **Redact** emails / phone numbers / API keys (provider-specific patterns for OpenAI / Anthropic / AWS / Stripe / GitHub / Google / Slack) live in the preview before exporting.
+
+## Multi-provider matrix
+
+| Provider | ZIP import | Manual paste | Extension | Attachment binaries |
+|---|---|---|---|---|
+| **ChatGPT** | ✓ (text, multimodal, code, execution, thoughts, reasoning, browsing) | ✓ (classic markers + page-copy heuristic) | ✓ | ✓ (all file types via fetch interception + auto-click) |
+| **Claude** | ✓ (`text` / `image` / `tool_use` / `tool_result` content blocks, attachments, files) | ✓ | ✓ | ✓ for anything the page renders inline |
+| **Gemini** | ✓ (Google Takeout activity log, session-grouped by time gap) | — | — | — |
 
 ## Privacy
 
 - No backend, no database, no accounts.
-- Files are read with JSZip in memory and discarded when the tab closes.
-- Nothing is persisted to `localStorage` by default.
-- Redaction is best-effort; the app warns you to review exports before sharing.
+- Files read with JSZip in memory and discarded when the tab closes.
+- Nothing persisted to `localStorage` by default.
+- Redaction is best-effort; the app reminds you to review exports before sharing.
+- The browser extension has no telemetry and only opens chatvault.space as a new tab.
 
 ## Quick start
+
+Use it at <https://chatvault.space>. Or run it locally:
 
 ```bash
 git clone https://github.com/johnivanov04/ChatVault.git
@@ -33,22 +39,22 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:5173/> and either drop your export ZIP onto the page or click "Paste Chat Manually". If you need to get an export ZIP, expand "How do I get my export?" on the upload screen — there are walkthroughs for all three providers.
+Open <http://localhost:5173/>. For the extension, see [`extension/README.md`](extension/README.md).
 
 ## Usage flow
 
-1. **Landing** — pick ZIP or paste.
+1. **Landing** — pick ZIP, paste, or use the extension.
 2. **Upload / paste** — the ZIP parser locates and identifies the provider's conversation file; the paste parser splits by marker or by heuristic.
 3. **Picker** *(ZIP only)* — search by title or content, sorted newest first.
-4. **Preview** — full transcript, markdown rendered, internal messages hidden by default. Side panel toggles export options + redaction in real time.
-5. **Download** — Markdown, JSON, or Save as PDF (browser print).
+4. **Preview** — full transcript, markdown rendered, internal messages hidden by default. Side panel toggles export options + redaction in real time, with live counts of bundled attachments.
+5. **Download** — Markdown, JSON, or Save as PDF (browser print). Markdown/JSON ship as `.zip` with an `attachments/` folder if any binaries were captured.
 
 ## Development
 
 ```bash
 npm run dev          # Vite dev server on :5173
 npm run build        # tsc -b + vite build
-npm test             # vitest run (314+ unit tests)
+npm test             # vitest run (350+ unit tests)
 npm run test:watch   # vitest in watch mode
 npm run lint         # eslint
 ```
@@ -62,34 +68,46 @@ npm run lint         # eslint
 - **lucide-react** for icons
 - **Vitest** + **jsdom** for unit tests
 
-No backend, no database. All compute boundaries are inside the browser.
+No backend, no database. All compute is inside the browser.
 
 ## Project structure
 
 ```
 src/
-  App.tsx                        top-level stage router (history-integrated)
+  App.tsx                        top-level stage router (history-integrated, extension-import-aware)
   components/
     Landing.tsx                  input choice cards + hero
     UploadZip.tsx                drag-and-drop, huge-file warning, provider auto-detect
     ConversationPicker.tsx       searchable, sorted-newest-first list
-    ConversationPreview.tsx      two-column view + side panel
-    ExportOptionsPanel.tsx       view + export + redaction options
+    ConversationPreview.tsx      two-column view + side panel + orphan-attachment sweep
+    ExportOptionsPanel.tsx       view + export + redaction options + attachment summary
     ManualPasteInput.tsx         textarea + live role-count preview
     PrintView.tsx                print-only layout for PDF export
     HowToExport.tsx              per-provider export instructions
+    AttachmentChip.tsx           clickable attachment pill (downloads binary)
   lib/
     zip/                         readZip, multi-provider findConversationFile
     parsers/                     parseChatGptExport, parseClaudeExport,
                                  parseGeminiExport, parseManualPaste,
                                  normalizeConversation
-    exporters/                   exportMarkdown, exportJson, printPdf
+    exporters/                   exportMarkdown, exportJson, printPdf,
+                                 buildExportZip (sidecar attachments folder)
     redaction/                   redactText, redactConversation
+    import/                      extensionImport (URL-fragment + postMessage bridge)
     utils/                       date, downloadFile, safeStringify,
                                  conversationSummary
   types/
     conversation.ts              NormalizedConversation, NormalizedMessage,
-                                 ExportOptions, Provider, ConversationSource
+                                 NormalizedAttachment, ExportOptions,
+                                 Provider, ConversationSource
+
+extension/                       MV3 browser extension (see extension/README.md)
+  manifest.json
+  background.js                  service worker
+  content-{chatgpt,claude,chatvault}.js   per-site content scripts
+  lib/                           page-bridge (MAIN world), html-to-markdown,
+                                 attachment-detection, fetch-attachment, auto-click
+  popup.{html,js,css}            toolbar UI
 ```
 
 ## License
