@@ -91,12 +91,21 @@ async function extractConversation() {
   const globalImgAttachments = mapGlobalImgsToEntries(entries);
 
   // For any detected attachments not yet in cache, drive the page's own
-  // click handler to make it fetch them (works for documents the page
-  // doesn't auto-fetch).
+  // click handler to make it fetch them. On Claude, clicking a file card
+  // doesn't actually trigger a public fetch, so we hide attachments that
+  // are already in the conv-api file index — that's everything with
+  // inlined text or marked file_kind:"blob" (handled separately). Avoids
+  // ~5s/file timeout.
   if (window.__chatvaultAutoClickUncached) {
+    const knownFilenames = new Set(
+      claudeFileIndex ? claudeFileIndex.byFilename.keys() : [],
+    );
     await window.__chatvaultAutoClickUncached(
       entries.map((e) => detectionScope.get(e)),
-      (n) => window.__chatvaultDetectAttachments(n, isAttachmentUrl),
+      (n) =>
+        window
+          .__chatvaultDetectAttachments(n, isAttachmentUrl)
+          .filter((d) => !knownFilenames.has(d.filename)),
     );
   }
 
