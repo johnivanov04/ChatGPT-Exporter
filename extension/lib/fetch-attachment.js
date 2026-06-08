@@ -26,6 +26,7 @@
     if (!d || d.type !== "chatvault:attachment-captured") return;
     if (typeof d.dataBase64 !== "string") return;
     const entry = {
+      filename: typeof d.filename === "string" ? d.filename : "",
       dataBase64: d.dataBase64,
       mimeType: d.mimeType || "",
       size: typeof d.size === "number" ? d.size : undefined,
@@ -51,6 +52,16 @@
     const filenames = Array.from(byFilename.keys());
     const urls = Array.from(byUrl.keys());
     return { filenames, urls, count: byUrl.size };
+  };
+
+  /**
+   * All cached attachments keyed by filename. Used by content scripts to
+   * pick up captures that weren't matched to any detected attachment in the
+   * message DOM (typical for inline images where the DOM only has <img src>
+   * and no filename text).
+   */
+  window.__chatvaultAllCachedAttachments = function () {
+    return Array.from(byFilename.values());
   };
 
   window.__chatvaultCapturedAttachment = function (filename) {

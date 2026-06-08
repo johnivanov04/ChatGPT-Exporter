@@ -102,7 +102,7 @@ async function materializeAll(detected) {
     const cachedByName = window.__chatvaultCapturedAttachment(d.filename);
     if (cachedByName) {
       out.push({
-        filename: d.filename,
+        filename: cachedByName.filename || d.filename,
         dataBase64: cachedByName.dataBase64,
         mimeType: cachedByName.mimeType,
         size: cachedByName.size,
@@ -113,7 +113,7 @@ async function materializeAll(detected) {
       const cachedByUrl = window.__chatvaultCapturedAttachmentByUrl(d.url);
       if (cachedByUrl) {
         out.push({
-          filename: d.filename,
+          filename: cachedByUrl.filename || d.filename,
           dataBase64: cachedByUrl.dataBase64,
           mimeType: cachedByUrl.mimeType,
           size: cachedByUrl.size,

@@ -11,7 +11,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 const CDN_HOST_RE =
-  /^(?:https?:\/\/)?(?:files\.oaiusercontent\.com|cdn\.oaistatic\.com|chat\.openai\.com\/backend-api\/files\/|chatgpt\.com\/backend-api\/files\/)/i;
+  /^(?:https?:\/\/)?(?:files\.oaiusercontent\.com|[\w.]+\.oaiusercontent\.com|cdn\.oaistatic\.com|chat\.openai\.com\/backend-api\/(?:files\/|estuary\/)|chatgpt\.com\/backend-api\/(?:files\/|estuary\/))/i;
 
 function isAttachmentUrl(url) {
   if (!url) return false;
@@ -67,7 +67,20 @@ async function extractConversation() {
       messageIndex: messages.length,
       metadata: { contentType: "text" },
       ...(attachments.length > 0 ? { attachments } : {}),
+      __sourceNodeIndex: i, // internal: used by the sweep below
     });
+  }
+
+  // Sweep: any cached binary that didn't get attached above (typical for
+  // inline images where the message DOM has only an <img src> with no
+  // filename text) gets attached to whichever message's DOM contains its
+  // file_id. We match by file_id rather than full URL because signed URLs
+  // include a per-request `sig` that changes.
+  attachOrphanCachedAttachments(messages, nodes);
+
+  // Strip internal-only fields before shipping.
+  for (const m of messages) {
+    delete m.__sourceNodeIndex;
   }
 
   return {
@@ -90,6 +103,50 @@ function normalizeRole(role) {
   if (r === "user" || r === "assistant" || r === "system" || r === "tool")
     return r;
   return "unknown";
+}
+
+function attachOrphanCachedAttachments(messages, nodes) {
+  const referenced = new Set();
+  for (const m of messages) {
+    if (!m.attachments) continue;
+    for (const a of m.attachments) referenced.add(a.filename);
+  }
+  const allCached = window.__chatvaultAllCachedAttachments?.() || [];
+  let attached = 0;
+  for (const cached of allCached) {
+    if (!cached.filename || referenced.has(cached.filename)) continue;
+    const fileId = extractFileId(cached.url);
+    if (!fileId) continue;
+    // Find the first message whose source DOM contains this file_id.
+    for (const m of messages) {
+      const node = nodes[m.__sourceNodeIndex];
+      if (!node) continue;
+      if (!(node.outerHTML || "").includes(fileId)) continue;
+      m.attachments = m.attachments || [];
+      m.attachments.push({
+        filename: cached.filename,
+        dataBase64: cached.dataBase64,
+        mimeType: cached.mimeType,
+        size: cached.size,
+      });
+      referenced.add(cached.filename);
+      attached++;
+      break;
+    }
+  }
+  if (attached > 0) {
+    console.log(
+      "[ChatVault cs] sweep attached",
+      attached,
+      "orphan cached attachment(s) to messages",
+    );
+  }
+}
+
+function extractFileId(url) {
+  if (typeof url !== "string") return null;
+  const m = /(?:id=|\/files\/|content\?id=)?(file_[a-zA-Z0-9]+)/i.exec(url);
+  return m ? m[1] : null;
 }
 
 async function proactivelyFetchUncached(messageNodes) {
@@ -182,7 +239,7 @@ async function materializeAll(detected) {
     const cachedByName = window.__chatvaultCapturedAttachment(d.filename);
     if (cachedByName) {
       out.push({
-        filename: d.filename,
+        filename: cachedByName.filename || d.filename,
         dataBase64: cachedByName.dataBase64,
         mimeType: cachedByName.mimeType,
         size: cachedByName.size,
@@ -192,8 +249,11 @@ async function materializeAll(detected) {
     if (d.url) {
       const cachedByUrl = window.__chatvaultCapturedAttachmentByUrl(d.url);
       if (cachedByUrl) {
+        // Prefer the cache's real filename (from Content-Disposition) over
+        // the one we derived from the URL — the URL one is often "content"
+        // for estuary endpoints.
         out.push({
-          filename: d.filename,
+          filename: cachedByUrl.filename || d.filename,
           dataBase64: cachedByUrl.dataBase64,
           mimeType: cachedByUrl.mimeType,
           size: cachedByUrl.size,
