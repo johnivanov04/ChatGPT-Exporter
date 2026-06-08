@@ -69,6 +69,10 @@
     }
 
     // (3) Card detection — filename-shaped text in a compact container.
+    // We skip text inside <code>/<pre>/<kbd>/<samp> because those are code
+    // references, not attachment cards. A filename inside an assistant's
+    // code block (e.g. `load('foo.mat')`) shouldn't be treated as an
+    // attached file.
     const walker = document.createTreeWalker(
       messageNode,
       NodeFilter.SHOW_TEXT,
@@ -79,12 +83,30 @@
       const text = (node.textContent || "").trim();
       if (!text || !FILENAME_RE.test(text)) continue;
       if (byKey.has(text)) continue;
+      if (isInsideCodeContext(node)) continue;
       const card = findCompactCard(node, messageNode);
       const url = card ? findAttachmentUrlInCard(card, isAttachmentUrl) : null;
       upsert(text, { filename: text, url: url || undefined });
     }
 
     return Array.from(byKey.values());
+  }
+
+  function isInsideCodeContext(textNode) {
+    let el = textNode.parentElement;
+    while (el) {
+      const tag = el.tagName?.toLowerCase();
+      if (
+        tag === "code" ||
+        tag === "pre" ||
+        tag === "kbd" ||
+        tag === "samp"
+      ) {
+        return true;
+      }
+      el = el.parentElement;
+    }
+    return false;
   }
 
   function findCompactCard(textNode, stopAt) {
