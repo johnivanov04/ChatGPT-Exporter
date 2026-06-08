@@ -27,7 +27,10 @@
   // the file_id sweep keeps false positives in check.
   //
   // Requiring ext length ≥ 2 avoids matching version strings like "v1.2".
-  const FILENAME_RE = /^[\w\-. ()[\]+&,!@#$%]+\.[a-zA-Z0-9]{2,10}$/;
+  // Lookahead requires at least one ASCII letter anywhere in the match, so
+  // KaTeX number fragments like "267.44" or "$732.56" don't trigger.
+  const FILENAME_RE =
+    /^(?=.*[a-zA-Z])[\w\-. ()[\]+&,!@#$%]+\.[a-zA-Z0-9]{2,10}$/;
   const LABEL_RE =
     /^(PDF|IMAGE|FILE|AUDIO|VIDEO|DOCUMENT|SPREADSHEET|TEXT|CODE|SCREENSHOT|NOTEBOOK|ARCHIVE|DATA)$/;
 

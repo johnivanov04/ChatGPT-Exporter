@@ -63,10 +63,11 @@ async function extractConversation() {
     );
   }
 
-  // Diagnostic: global scan for attachment-shaped <img> tags. Tells us
-  // whether the attachments are in the DOM at all, and where they live
-  // relative to the message containers we found.
-  diagnoseGlobalAttachments(entries);
+  // Claude renders attachment thumbnails OUTSIDE the message text bubble
+  // (in a sibling subtree of the same "turn container"). Scan the whole
+  // document for attachment-shaped imgs and route each to the nearest
+  // user message entry.
+  const globalImgAttachments = mapGlobalImgsToEntries(entries);
 
   // For any detected attachments not yet in cache, drive the page's own
   // click handler to make it fetch them (works for documents the page
@@ -85,6 +86,17 @@ async function extractConversation() {
       entry.node,
       isAttachmentUrl,
     );
+    // Merge in global-img attachments routed to this entry.
+    const extras = globalImgAttachments.get(entry) || [];
+    for (const extra of extras) {
+      if (
+        !detected.some(
+          (d) => d.filename === extra.filename || d.url === extra.url,
+        )
+      ) {
+        detected.push(extra);
+      }
+    }
     const attachments = await materializeAll(detected);
     const filenames = detected.map((d) => d.filename);
     const raw = window.__chatvaultHtmlToMarkdown(entry.node);
@@ -108,6 +120,59 @@ async function extractConversation() {
     messages,
     metadata: { provider: "claude", extractedFrom: location.href },
   };
+}
+
+function mapGlobalImgsToEntries(entries) {
+  // For each attachment-shaped <img> in the document, walk up its parent
+  // chain. The first ancestor that contains exactly ONE user entry is the
+  // "turn container" — assign the img to that user message. Stops when an
+  // ancestor contains more than one user entry (too broad).
+  const result = new Map();
+  const allImgs = Array.from(document.querySelectorAll("img[src]"));
+  let count = 0;
+  for (const img of allImgs) {
+    const src = img.getAttribute("src") || "";
+    if (!src || !isAttachmentUrl(src)) continue;
+    const filename =
+      img.getAttribute("alt") || filenameFromUrlForLog(src) || "attachment";
+    let parent = img.parentElement;
+    let owner = null;
+    while (parent) {
+      const matching = entries.filter(
+        (e) => e.role === "user" && parent.contains(e.node),
+      );
+      if (matching.length === 1) {
+        owner = matching[0];
+        break;
+      }
+      if (matching.length > 1) break;
+      parent = parent.parentElement;
+    }
+    if (!owner) continue;
+    const list = result.get(owner) || [];
+    if (!list.some((x) => x.url === src || x.filename === filename)) {
+      list.push({ filename, url: src });
+      count++;
+    }
+    result.set(owner, list);
+  }
+  console.log(
+    "[ChatVault cs] mapped",
+    count,
+    "global img attachments to",
+    result.size,
+    "user message(s)",
+  );
+  return result;
+}
+
+function filenameFromUrlForLog(url) {
+  try {
+    const u = new URL(url, location.href);
+    return decodeURIComponent(u.pathname.split("/").filter(Boolean).pop() || "");
+  } catch {
+    return "";
+  }
 }
 
 function diagnoseGlobalAttachments(entries) {
