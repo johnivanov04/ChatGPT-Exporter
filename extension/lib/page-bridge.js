@@ -17,24 +17,26 @@
   window.__chatvaultBridgeInstalled = true;
 
   const BINARY_URL_PATTERNS = [
-    // Direct ChatGPT/Claude CDN endpoints
+    // ChatGPT CDN
     /files\.oaiusercontent\.com/i,
     /cdn\.oaistatic\.com/i,
     /sdmnt-[\w-]+\.oaiusercontent\.com/i,
     /[\w.]+\.oaiusercontent\.com/i,
+    // Claude CDN / file endpoints
     /files\.anthropic\.com/i,
     /cdn\.anthropic\.com/i,
-    /claude\.ai\/api\/[^/]+\/files\/[^/]+\/(?:content|download)/i,
+    /a-cdn\.anthropic\.com/i,
+    /a-api\.anthropic\.com\/v1\/(?:files|organizations\/[^/]+\/files)/i,
+    /api\.anthropic\.com\/v1\/files/i,
+    /claude\.ai\/api\/[^/]+\/files\/[^/]+/i,
   ];
 
   // Metadata URLs — JSON responses that describe a file and (sometimes)
   // contain a `download_url` field. We follow these to get the real binary.
   const CHATGPT_FILE_META_RE =
     /^https?:\/\/(?:chatgpt\.com|chat\.openai\.com)\/backend-api\/files\/download\/(file_[a-z0-9]+)/i;
-  // Claude file metadata pattern (placeholder; we'll widen as we learn the
-  // real shape).
   const CLAUDE_FILE_META_RE =
-    /^https?:\/\/claude\.ai\/api\/[^/]+\/files\/([a-f0-9-]+)\/?$/i;
+    /^https?:\/\/(?:claude\.ai\/api|a-api\.anthropic\.com\/v1|api\.anthropic\.com\/v1)(?:\/organizations\/[^/]+)?\/files\/([a-zA-Z0-9-]+)/i;
 
   // Endpoints we explicitly never follow even though they contain "files".
   const NEVER_FOLLOW = [
@@ -284,7 +286,71 @@
       }
     }
 
+    // (4) Claude conversation API → harvest file UUIDs and proactively
+    // fetch each one. Claude conversations live at:
+    //   /api/organizations/{org_id}/chat_conversations/{conv_id}
+    if (
+      /json/i.test(ct) &&
+      /\/api\/organizations\/[^/]+\/chat_conversations\/[a-zA-Z0-9-]+/.test(url)
+    ) {
+      const text = await response.text();
+      harvestClaudeFileIds(text);
+      return;
+    }
+
     log("ignored (didn't match attachment patterns)", url);
+  }
+
+  function harvestClaudeFileIds(text) {
+    const ids = new Set();
+    // Claude file IDs are UUIDs (different from ChatGPT's file_xxx format).
+    // Look for "file_uuid":"<uuid>" or "uuid":"<uuid>" inside a file context.
+    for (const m of text.matchAll(/"file_uuid"\s*:\s*"([a-f0-9-]{36})"/gi)) {
+      ids.add(m[1]);
+    }
+    for (const m of text.matchAll(/"uuid"\s*:\s*"([a-f0-9-]{36})"/gi)) {
+      ids.add(m[1]);
+    }
+    if (ids.size === 0) return;
+    log(
+      "harvested file UUIDs from Claude conversation:",
+      Array.from(ids).slice(0, 5),
+      "(total",
+      ids.size,
+      ")",
+    );
+    // We don't know the org_id here without parsing more carefully. Try a
+    // few URL shapes; the bridge will follow whichever responds.
+    for (const id of ids) autoFetchClaudeFileId(id).catch(() => {});
+  }
+
+  async function autoFetchClaudeFileId(fileId) {
+    if (autoFetched.has(fileId)) return;
+    autoFetched.add(fileId);
+    const candidates = [
+      `${location.origin}/api/files/${fileId}`,
+      `${location.origin}/api/organizations/_/files/${fileId}`,
+      `https://a-api.anthropic.com/v1/files/${fileId}`,
+      `https://a-api.anthropic.com/v1/files/${fileId}/content`,
+    ];
+    for (const metaUrl of candidates) {
+      try {
+        log("Claude on-demand", metaUrl);
+        const res = await originalFetch(metaUrl, buildOnDemandInit());
+        if (!res.ok) continue;
+        const ct = res.headers.get("content-type") || "";
+        if (/json/i.test(ct)) {
+          const text = await res.text();
+          await followMetadata(metaUrl, text);
+        } else {
+          const blob = await res.blob();
+          await captureBlob(metaUrl, blob, res.headers, "(Claude direct)");
+        }
+        return; // first success wins
+      } catch (err) {
+        log("Claude on-demand error", err, metaUrl);
+      }
+    }
   }
 
   async function processXhr(url, blob, rawHeaders) {
