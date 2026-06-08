@@ -52,6 +52,16 @@ async function extractConversation() {
     );
   }
 
+  // For any detected attachments not yet in cache, drive the page's own
+  // click handler to make it fetch them (works for documents the page
+  // doesn't auto-fetch).
+  if (window.__chatvaultAutoClickUncached) {
+    await window.__chatvaultAutoClickUncached(
+      entries.map((e) => e.node),
+      (n) => window.__chatvaultDetectAttachments(n, isAttachmentUrl),
+    );
+  }
+
   const messages = [];
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];

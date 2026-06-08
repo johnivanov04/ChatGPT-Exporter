@@ -41,6 +41,16 @@ async function extractConversation() {
   // thumbnail).
   await proactivelyFetchUncached(nodes);
 
+  // Phase 2: for any detected attachments STILL missing from cache, drive
+  // the page's own click handler to make it fetch them. This catches files
+  // (typically PDFs) where the proactive API call returned 404/422 because
+  // the page uses request-specific tokens we can't replicate.
+  if (window.__chatvaultAutoClickUncached) {
+    await window.__chatvaultAutoClickUncached(nodes, (n) =>
+      window.__chatvaultDetectAttachments(n, isAttachmentUrl),
+    );
+  }
+
   const messages = [];
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
