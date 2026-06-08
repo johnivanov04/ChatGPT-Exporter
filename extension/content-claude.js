@@ -143,43 +143,6 @@ async function extractConversation() {
   };
 }
 
-function dumpMissingTextFiles(json, byFilename) {
-  const dumped = new Set();
-  const walk = (obj) => {
-    if (!obj || typeof obj !== "object") return;
-    if (Array.isArray(obj)) {
-      for (const v of obj) walk(v);
-      return;
-    }
-    const name = obj.file_name || obj.filename || obj.name;
-    if (
-      typeof name === "string" &&
-      /\.[a-zA-Z0-9]{1,10}$/.test(name) &&
-      !dumped.has(name) &&
-      !byFilename.get(name)?.text
-    ) {
-      const summary = Object.fromEntries(
-        Object.entries(obj).map(([k, v]) => [
-          k,
-          typeof v === "string"
-            ? `"${v.slice(0, 80)}${v.length > 80 ? `…(${v.length}ch)` : ""}"`
-            : v == null
-              ? String(v)
-              : typeof v === "object"
-                ? Array.isArray(v)
-                  ? `Array(${v.length})`
-                  : `Object{${Object.keys(v).slice(0, 6).join(",")}}`
-                : String(v),
-        ]),
-      );
-      console.log("[ChatVault cs] no-text file shape:", name, summary);
-      dumped.add(name);
-    }
-    for (const v of Object.values(obj)) walk(v);
-  };
-  walk(json);
-}
-
 async function probeClaudeFileEndpoints(orgId, fileId, filename) {
   // Try both the org-scoped pattern and the bare patterns the bridge has
   // observed Claude use. Order: most specific to least.
@@ -304,6 +267,9 @@ async function harvestClaudeFileIndex() {
         if (typeof id === "string" && /^[a-f0-9-]{8,}$/i.test(id)) {
           existing.fileId = id;
         }
+        if (typeof obj.file_kind === "string") {
+          existing.fileKind = obj.file_kind;
+        }
         // Claude inlines extracted text for many file types — look for it.
         for (const key of [
           "extracted_content",
@@ -327,27 +293,15 @@ async function harvestClaudeFileIndex() {
       for (const v of Object.values(obj)) collectFiles(v);
     };
     collectFiles(json);
-    if (firstSample) {
-      console.log(
-        "[ChatVault cs] sample file object keys:",
-        firstSample.name,
-        "→",
-        firstSample.keys.join(", "),
-      );
-    }
     const withText = Array.from(byFilename.values()).filter((e) => e.text)
       .length;
     console.log(
-      "[ChatVault cs] harvest found",
+      "[ChatVault cs] harvest:",
       byFilename.size,
       "file(s),",
       withText,
-      "with inlined text, for org",
-      orgId.slice(0, 8),
+      "with inlined text",
     );
-    // Files without text — dump their object so we can see what content
-    // fields they have (if any).
-    dumpMissingTextFiles(json, byFilename);
     return { orgId, byFilename };
   } catch (err) {
     console.log("[ChatVault cs] harvest error", err);
@@ -571,6 +525,18 @@ async function materializeAll(detected) {
           dataBase64: textToB64(entry.text),
           mimeType: "text/plain; charset=utf-8",
           size: entry.text.length,
+        });
+        continue;
+      }
+      // blob attachments (.mlx, binary uploads) aren't served by any
+      // public endpoint — Claude stashes them in the code-interpreter
+      // sandbox at /mnt/user-data/uploads/. Skip the probe and emit a
+      // helpful error.
+      if (entry?.fileKind === "blob") {
+        out.push({
+          filename: d.filename,
+          fetchError:
+            "Claude doesn't expose this binary file type via the web. Only the Takeout-style data export preserves the original.",
         });
         continue;
       }
