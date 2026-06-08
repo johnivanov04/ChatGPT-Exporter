@@ -22,13 +22,16 @@
     /cdn\.oaistatic\.com/i,
     /sdmnt-[\w-]+\.oaiusercontent\.com/i,
     /[\w.]+\.oaiusercontent\.com/i,
-    // Claude CDN / file endpoints
+    // Claude CDN / file endpoints (absolute and relative)
     /files\.anthropic\.com/i,
     /cdn\.anthropic\.com/i,
     /a-cdn\.anthropic\.com/i,
     /a-api\.anthropic\.com\/v1\/(?:files|organizations\/[^/]+\/files)/i,
     /api\.anthropic\.com\/v1\/files/i,
     /claude\.ai\/api\/[^/]+\/files\/[^/]+/i,
+    // Relative path Claude uses for inline previews / downloads:
+    //   /api/{org_uuid}/files/{file_uuid}/{preview|content|download}
+    /^\/api\/[a-f0-9-]{8,}\/files\/[a-f0-9-]{8,}/i,
   ];
 
   // Metadata URLs — JSON responses that describe a file and (sometimes)
@@ -36,7 +39,7 @@
   const CHATGPT_FILE_META_RE =
     /^https?:\/\/(?:chatgpt\.com|chat\.openai\.com)\/backend-api\/files\/download\/(file_[a-z0-9]+)/i;
   const CLAUDE_FILE_META_RE =
-    /^https?:\/\/(?:claude\.ai\/api|a-api\.anthropic\.com\/v1|api\.anthropic\.com\/v1)(?:\/organizations\/[^/]+)?\/files\/([a-zA-Z0-9-]+)/i;
+    /(?:^https?:\/\/(?:claude\.ai\/api|a-api\.anthropic\.com\/v1|api\.anthropic\.com\/v1)(?:\/organizations\/[^/]+)?|^\/api\/[a-f0-9-]{8,})\/files\/([a-zA-Z0-9-]+)/i;
 
   // Endpoints we explicitly never follow even though they contain "files".
   const NEVER_FOLLOW = [
@@ -66,6 +69,16 @@
 
   // file_ids we've already proactively fetched, so we don't hammer the API.
   const autoFetched = new Set();
+
+  // Claude puts the org_uuid in the file URL path; we sniff it from any
+  // request we see so on-demand fetches can use it.
+  let claudeOrgId = null;
+  function maybeRememberClaudeOrgId(url) {
+    if (!url) return;
+    const m =
+      /\/api\/(?:organizations\/)?([a-f0-9-]{8,})(?:\/|$)/i.exec(url);
+    if (m) claudeOrgId = m[1];
+  }
 
   function getConversationIdFromLocation() {
     const m = /\/c\/([a-zA-Z0-9-]+)/.exec(window.location.pathname);
@@ -191,6 +204,7 @@
     // on-demand fetches later.
     try {
       const url = urlOf(args[0]);
+      maybeRememberClaudeOrgId(url);
       if (
         CHATGPT_FILE_META_RE.test(url) ||
         CLAUDE_FILE_META_RE.test(url)

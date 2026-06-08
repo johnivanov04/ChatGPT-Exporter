@@ -27,8 +27,19 @@ const ASSISTANT_SELECTORS = [
   ".prose",
 ];
 
-const CDN_HOST_RE =
-  /^(?:https?:\/\/)?(?:files\.anthropic\.com|claude\.ai\/api\/|cdn\.anthropic\.com)/i;
+const CDN_HOST_RE = new RegExp(
+  [
+    "files\\.anthropic\\.com",
+    "claude\\.ai\\/api\\/",
+    "cdn\\.anthropic\\.com",
+    "a-cdn\\.anthropic\\.com",
+    "a-api\\.anthropic\\.com\\/v1",
+    // Relative path that Claude uses for inline previews + downloads:
+    //   /api/{org_uuid}/files/{file_uuid}/[preview|content|download]
+    "^\\/api\\/[a-f0-9-]{8,}\\/files\\/[a-f0-9-]{8,}",
+  ].join("|"),
+  "i",
+);
 
 function isAttachmentUrl(url) {
   if (!url) return false;
