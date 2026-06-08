@@ -84,7 +84,53 @@
   /* -------------------- click-target finder ------------------------------ */
 
   function findClickTarget(messageNode, filename) {
-    // Walk text nodes — anything whose trimmed text matches the filename.
+    const lower = filename.toLowerCase();
+
+    // Strategy 1: any button / link / role=button whose text or aria-label
+    // contains the filename. Pick the SMALLEST match (most specific).
+    const explicitClickables = [
+      ...messageNode.querySelectorAll(
+        'button, a[href], [role="button"], [role="link"]',
+      ),
+    ];
+    const matches = explicitClickables.filter((el) => {
+      const text = (el.textContent || "").toLowerCase();
+      if (text.includes(lower)) return true;
+      const aria = (el.getAttribute("aria-label") || "").toLowerCase();
+      if (aria.includes(lower)) return true;
+      const title = (el.getAttribute("title") || "").toLowerCase();
+      if (title.includes(lower)) return true;
+      return false;
+    });
+    if (matches.length > 0) {
+      matches.sort(
+        (a, b) =>
+          (a.textContent || "").length - (b.textContent || "").length,
+      );
+      return matches[0];
+    }
+
+    // Strategy 2: any element with cursor:pointer whose text contains the
+    // filename. Pick the deepest (smallest) such element.
+    const all = Array.from(messageNode.querySelectorAll("*"));
+    const pointerMatches = all.filter((el) => {
+      if (!(el.textContent || "").toLowerCase().includes(lower)) return false;
+      try {
+        return window.getComputedStyle(el).cursor === "pointer";
+      } catch {
+        return false;
+      }
+    });
+    if (pointerMatches.length > 0) {
+      pointerMatches.sort(
+        (a, b) =>
+          (a.textContent || "").length - (b.textContent || "").length,
+      );
+      return pointerMatches[0];
+    }
+
+    // Strategy 3: walk text nodes for an exact filename match and find
+    // the nearest clickable ancestor (the original v1 strategy).
     const walker = document.createTreeWalker(
       messageNode,
       NodeFilter.SHOW_TEXT,
@@ -94,13 +140,24 @@
     while ((node = walker.nextNode())) {
       const text = (node.textContent || "").trim();
       if (text !== filename) continue;
-      // Walk up looking for a clickable ancestor.
       let el = node.parentElement;
       while (el && el !== messageNode) {
         if (isClickable(el)) return el;
         el = el.parentElement;
       }
     }
+
+    // Diagnostic: dump a short snippet of the message HTML so we can see
+    // how the attachment is actually represented in this version of the UI.
+    try {
+      console.log(
+        "[ChatVault cs] no click target found; HTML snippet for debug:",
+        (messageNode.outerHTML || "").slice(0, 3000),
+      );
+    } catch {
+      /* ignore */
+    }
+
     return null;
   }
 
