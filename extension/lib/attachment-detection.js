@@ -20,15 +20,16 @@
   if (typeof window === "undefined") return;
   if (window.__chatvaultDetectAttachments) return;
 
-  const FILE_EXT =
-    "pdf|png|jpe?g|gif|webp|svg|heic|csv|xlsx?|docx?|pptx?|txt|md|markdown|py|js|tsx?|jsx?|json|yaml|yml|html?|css|sql|sh|bash|zip|tar|gz|mp[34]|mov|wav|mp4|m4a|aiff?";
-
-  const FILENAME_RE = new RegExp(
-    `^[\\w\\-. ()\\[\\]]+\\.(?:${FILE_EXT})$`,
-    "i",
-  );
+  // No extension whitelist — match any "<basename>.<ext>" pattern where ext
+  // is 2-10 alphanumeric characters. This catches every file type someone
+  // might attach (.mlx, .ipynb, .stl, .R, .tex, etc.) without us having to
+  // chase a list. The compact-container heuristic (`findCompactCard`) plus
+  // the file_id sweep keeps false positives in check.
+  //
+  // Requiring ext length ≥ 2 avoids matching version strings like "v1.2".
+  const FILENAME_RE = /^[\w\-. ()[\]+&,!@#$%]+\.[a-zA-Z0-9]{2,10}$/;
   const LABEL_RE =
-    /^(PDF|IMAGE|FILE|AUDIO|VIDEO|DOCUMENT|SPREADSHEET|TEXT|CODE|SCREENSHOT|SPREADSHEET)$/;
+    /^(PDF|IMAGE|FILE|AUDIO|VIDEO|DOCUMENT|SPREADSHEET|TEXT|CODE|SCREENSHOT|NOTEBOOK|ARCHIVE|DATA)$/;
 
   function detectAttachments(messageNode, isAttachmentUrl) {
     const byKey = new Map();
