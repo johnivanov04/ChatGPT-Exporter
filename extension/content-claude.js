@@ -63,6 +63,11 @@ async function extractConversation() {
     );
   }
 
+  // Diagnostic: global scan for attachment-shaped <img> tags. Tells us
+  // whether the attachments are in the DOM at all, and where they live
+  // relative to the message containers we found.
+  diagnoseGlobalAttachments(entries);
+
   // For any detected attachments not yet in cache, drive the page's own
   // click handler to make it fetch them (works for documents the page
   // doesn't auto-fetch).
@@ -103,6 +108,68 @@ async function extractConversation() {
     messages,
     metadata: { provider: "claude", extractedFrom: location.href },
   };
+}
+
+function diagnoseGlobalAttachments(entries) {
+  try {
+    const allImgs = Array.from(document.querySelectorAll("img[src]"));
+    const matching = allImgs.filter((img) =>
+      isAttachmentUrl(img.getAttribute("src") || ""),
+    );
+    console.log(
+      "[ChatVault cs] global img scan:",
+      allImgs.length,
+      "imgs total,",
+      matching.length,
+      "match attachment URL pattern",
+    );
+    if (matching.length === 0) {
+      // Also try with a broader pattern, in case my isAttachmentUrl is wrong.
+      const broader = allImgs.filter((img) => {
+        const src = img.getAttribute("src") || "";
+        return /\/files\/|\/preview|anthropic\.com/i.test(src);
+      });
+      console.log(
+        "[ChatVault cs] broader scan (any /files/ or anthropic.com):",
+        broader.length,
+        "imgs",
+      );
+      broader.slice(0, 3).forEach((img, i) => {
+        console.log(
+          `  [${i}] alt="${img.getAttribute("alt") || ""}" src="${img.getAttribute("src") || ""}"`,
+        );
+      });
+      return;
+    }
+    matching.slice(0, 3).forEach((img, i) => {
+      const alt = img.getAttribute("alt") || "";
+      const src = img.getAttribute("src") || "";
+      // Find which (if any) message entry contains this img.
+      const containingEntry = entries.find((e) => e.node.contains(img));
+      // Walk up parent chain to find closest ancestor that contains an entry.
+      let parent = img.parentElement;
+      let ancestorContainsMsg = null;
+      while (parent) {
+        for (const e of entries) {
+          if (parent.contains(e.node)) {
+            ancestorContainsMsg = parent.tagName + (parent.className ? "." + parent.className.split(" ").slice(0, 2).join(".") : "");
+            break;
+          }
+        }
+        if (ancestorContainsMsg) break;
+        parent = parent.parentElement;
+      }
+      console.log(
+        `[ChatVault cs] matching img [${i}]: alt="${alt}" src="${src.slice(0, 80)}"`,
+        "containing entry?",
+        !!containingEntry,
+        "| closest msg-containing ancestor:",
+        ancestorContainsMsg,
+      );
+    });
+  } catch (err) {
+    console.log("[ChatVault cs] diagnose error", err);
+  }
 }
 
 async function materializeAll(detected) {
