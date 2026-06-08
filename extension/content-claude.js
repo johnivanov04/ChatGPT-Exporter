@@ -143,6 +143,90 @@ async function extractConversation() {
   };
 }
 
+async function probeClaudeFileEndpoints(orgId, fileId, filename) {
+  const base = `/api/organizations/${orgId}/files/${fileId}`;
+  const candidates = [
+    base,
+    `${base}/content`,
+    `${base}/download`,
+    `${base}/preview`,
+    `${base}/raw`,
+  ];
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { credentials: "include" });
+      const ct = res.headers.get("content-type") || "";
+      const cd = res.headers.get("content-disposition") || "";
+      console.log(
+        `[ChatVault cs] probe ${filename}: ${url} → ${res.status} ${ct} ${cd.slice(0, 80)}`,
+      );
+      if (!res.ok) continue;
+
+      // If JSON, inspect for download_url / extracted_content / similar.
+      if (ct.includes("application/json")) {
+        const json = await res.clone().json().catch(() => null);
+        if (json && typeof json === "object") {
+          console.log(
+            `  ↳ json keys: ${Object.keys(json).slice(0, 12).join(", ")}`,
+          );
+          const followUrl =
+            json.download_url ||
+            json.preview_url ||
+            json.url ||
+            json.signed_url;
+          if (typeof followUrl === "string") {
+            console.log(`  ↳ following ${followUrl.slice(0, 80)}`);
+            const dres = await fetch(followUrl, { credentials: "include" });
+            console.log(
+              `  ↳ ${dres.status} ${dres.headers.get("content-type") || ""}`,
+            );
+            if (dres.ok) {
+              return await responseToB64(dres);
+            }
+          }
+          // Some Claude responses inline the file's text content directly.
+          if (typeof json.extracted_content === "string") {
+            const text = json.extracted_content;
+            return {
+              dataBase64: textToB64(text),
+              mimeType: "text/plain; charset=utf-8",
+              size: text.length,
+            };
+          }
+        }
+        continue;
+      }
+
+      // Otherwise treat as binary.
+      return await responseToB64(res);
+    } catch (err) {
+      console.log(`[ChatVault cs] probe ${filename}: ${url} → ERROR ${err.message}`);
+    }
+  }
+  console.log(`[ChatVault cs] all endpoints failed for ${filename}`);
+  return null;
+}
+
+async function responseToB64(res) {
+  const ab = await res.arrayBuffer();
+  const bytes = new Uint8Array(ab);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return {
+    dataBase64: btoa(bin),
+    mimeType:
+      res.headers.get("content-type") || "application/octet-stream",
+    size: bytes.length,
+  };
+}
+
+function textToB64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
 async function harvestClaudeFileIndex() {
   try {
     const convId = location.pathname.match(/\/chat\/([a-f0-9-]+)/i)?.[1];
@@ -393,26 +477,20 @@ async function materializeAll(detected) {
     }
 
     // 2.5) Claude file-index lookup: try the file endpoint(s) directly using
-    //      the file_uuid we harvested from the conversation API.
+    //      the file_uuid we harvested from the conversation API. Logs the
+    //      response shape of each so we can adapt to whatever Claude returns.
     if (claudeFileIndex) {
       const fileId = claudeFileIndex.byFilename.get(d.filename);
       if (fileId) {
-        const base = `/api/organizations/${claudeFileIndex.orgId}/files/${fileId}`;
-        const candidates = [base, `${base}/content`, `${base}/download`, `${base}/preview`];
-        let success = null;
-        for (const url of candidates) {
-          const fetched = await window.__chatvaultFetchAttachment(url);
-          if (fetched && !fetched.fetchError && fetched.dataBase64) {
-            success = fetched;
-            console.log("[ChatVault cs] file-index fetch worked:", d.filename, "via", url);
-            break;
-          }
-        }
+        const success = await probeClaudeFileEndpoints(
+          claudeFileIndex.orgId,
+          fileId,
+          d.filename,
+        );
         if (success) {
           out.push({ filename: d.filename, ...success });
           continue;
         }
-        console.log("[ChatVault cs] file-index fetch failed for", d.filename, "uuid", fileId);
       }
     }
 
