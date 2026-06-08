@@ -26,11 +26,13 @@
   // chase a list. The compact-container heuristic (`findCompactCard`) plus
   // the file_id sweep keeps false positives in check.
   //
-  // Requiring ext length ≥ 2 avoids matching version strings like "v1.2".
   // Lookahead requires at least one ASCII letter anywhere in the match, so
-  // KaTeX number fragments like "267.44" or "$732.56" don't trigger.
+  // KaTeX number fragments like "267.44" or "$732.56" don't trigger. We
+  // allow ext length 1-10 so single-letter extensions like .m (MATLAB),
+  // .R, .C, .h work. Combined with the letter-anywhere lookahead and the
+  // code-context filter, this keeps false positives low.
   const FILENAME_RE =
-    /^(?=.*[a-zA-Z])[\w\-. ()[\]+&,!@#$%]+\.[a-zA-Z0-9]{2,10}$/;
+    /^(?=.*[a-zA-Z])[\w\-. ()[\]+&,!@#$%]+\.[a-zA-Z0-9]{1,10}$/;
   const LABEL_RE =
     /^(PDF|IMAGE|FILE|AUDIO|VIDEO|DOCUMENT|SPREADSHEET|TEXT|CODE|SCREENSHOT|NOTEBOOK|ARCHIVE|DATA)$/;
 

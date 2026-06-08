@@ -47,6 +47,8 @@ function isAttachmentUrl(url) {
   return CDN_HOST_RE.test(url);
 }
 
+let claudeFileIndex = null;
+
 async function extractConversation() {
   try {
     console.log(
@@ -62,6 +64,12 @@ async function extractConversation() {
       "No messages found on this page. Open a conversation thread first.",
     );
   }
+
+  // Pull file UUIDs straight from Claude's conversation API. For non-image
+  // documents (.mlx, .mat, .ipynb, etc.), Claude doesn't fetch a preview
+  // when you click the card, so auto-click times out. The conv API gives
+  // us the file_uuid → we can hit the file endpoint directly.
+  claudeFileIndex = await harvestClaudeFileIndex();
 
   // Claude renders attachment thumbnails/cards OUTSIDE the message text
   // bubble (in a sibling subtree of the same "turn container"). For each
@@ -133,6 +141,69 @@ async function extractConversation() {
     messages,
     metadata: { provider: "claude", extractedFrom: location.href },
   };
+}
+
+async function harvestClaudeFileIndex() {
+  try {
+    const convId = location.pathname.match(/\/chat\/([a-f0-9-]+)/i)?.[1];
+    if (!convId) {
+      console.log("[ChatVault cs] harvest: no conv id in url");
+      return null;
+    }
+    const orgId = findClaudeOrgId();
+    if (!orgId) {
+      console.log("[ChatVault cs] harvest: no org id found");
+      return null;
+    }
+    const url = `/api/organizations/${orgId}/chat_conversations/${convId}?tree=True&rendering_mode=messages&render_all_tools=true`;
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) {
+      console.log("[ChatVault cs] harvest: conv fetch failed", res.status);
+      return null;
+    }
+    const json = await res.json();
+    const byFilename = new Map();
+    const collectFiles = (obj) => {
+      if (!obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) {
+        for (const item of obj) collectFiles(item);
+        return;
+      }
+      const name = obj.file_name || obj.filename || obj.name;
+      const id = obj.file_uuid || obj.uuid || obj.id;
+      if (
+        typeof name === "string" &&
+        typeof id === "string" &&
+        /\.[a-zA-Z0-9]{1,10}$/.test(name) &&
+        /^[a-f0-9-]{8,}$/i.test(id)
+      ) {
+        byFilename.set(name, id);
+      }
+      for (const v of Object.values(obj)) collectFiles(v);
+    };
+    collectFiles(json);
+    console.log(
+      "[ChatVault cs] harvest found",
+      byFilename.size,
+      "file(s) in conv api for org",
+      orgId.slice(0, 8),
+    );
+    return { orgId, byFilename };
+  } catch (err) {
+    console.log("[ChatVault cs] harvest error", err);
+    return null;
+  }
+}
+
+function findClaudeOrgId() {
+  const re = /\/organizations\/([a-f0-9-]{8,})/i;
+  for (const el of document.querySelectorAll("[href],[src]")) {
+    const v = el.getAttribute("href") || el.getAttribute("src") || "";
+    const m = re.exec(v);
+    if (m) return m[1];
+  }
+  const m = re.exec(document.documentElement.outerHTML);
+  return m?.[1] || null;
 }
 
 function expandToTurnContainer(entry, allEntries) {
@@ -298,8 +369,34 @@ async function materializeAll(detected) {
     // 2) Direct content-script fetch if we have a URL.
     if (d.url) {
       const fetched = await window.__chatvaultFetchAttachment(d.url);
-      out.push({ filename: d.filename, ...fetched });
-      continue;
+      if (fetched && !fetched.fetchError && fetched.dataBase64) {
+        out.push({ filename: d.filename, ...fetched });
+        continue;
+      }
+    }
+
+    // 2.5) Claude file-index lookup: try the file endpoint(s) directly using
+    //      the file_uuid we harvested from the conversation API.
+    if (claudeFileIndex) {
+      const fileId = claudeFileIndex.byFilename.get(d.filename);
+      if (fileId) {
+        const base = `/api/organizations/${claudeFileIndex.orgId}/files/${fileId}`;
+        const candidates = [base, `${base}/content`, `${base}/download`, `${base}/preview`];
+        let success = null;
+        for (const url of candidates) {
+          const fetched = await window.__chatvaultFetchAttachment(url);
+          if (fetched && !fetched.fetchError && fetched.dataBase64) {
+            success = fetched;
+            console.log("[ChatVault cs] file-index fetch worked:", d.filename, "via", url);
+            break;
+          }
+        }
+        if (success) {
+          out.push({ filename: d.filename, ...success });
+          continue;
+        }
+        console.log("[ChatVault cs] file-index fetch failed for", d.filename, "uuid", fileId);
+      }
     }
 
     // 3) Nothing worked — ask the user to open the file once.
