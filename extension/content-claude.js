@@ -150,11 +150,12 @@ async function harvestClaudeFileIndex() {
       console.log("[ChatVault cs] harvest: no conv id in url");
       return null;
     }
-    const orgId = findClaudeOrgId();
+    const orgId = await findClaudeOrgId();
     if (!orgId) {
       console.log("[ChatVault cs] harvest: no org id found");
       return null;
     }
+    console.log("[ChatVault cs] harvest: using org", orgId.slice(0, 8));
     const url = `/api/organizations/${orgId}/chat_conversations/${convId}?tree=True&rendering_mode=messages&render_all_tools=true`;
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) {
@@ -195,13 +196,29 @@ async function harvestClaudeFileIndex() {
   }
 }
 
-function findClaudeOrgId() {
+async function findClaudeOrgId() {
   const re = /\/organizations\/([a-f0-9-]{8,})/i;
+  // DOM first (fast, no extra request).
   for (const el of document.querySelectorAll("[href],[src]")) {
     const v = el.getAttribute("href") || el.getAttribute("src") || "";
     const m = re.exec(v);
     if (m) return m[1];
   }
+  // /api/organizations — the API itself tells us.
+  try {
+    const res = await fetch("/api/organizations", { credentials: "include" });
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json) && json.length > 0) {
+        const active = json.find((o) => o.is_default) || json[0];
+        if (active?.uuid) return active.uuid;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  // Last resort: outerHTML scrape (the org id is sometimes baked into
+  // inline scripts as a string literal).
   const m = re.exec(document.documentElement.outerHTML);
   return m?.[1] || null;
 }
