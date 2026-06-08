@@ -19,9 +19,16 @@
   const POST_CLOSE_DELAY_MS = 250;
 
   async function autoClickUncached(messageNodes, detectFn) {
+    console.log(
+      "[ChatVault cs] autoClickUncached scanning",
+      messageNodes.length,
+      "messages",
+    );
     const tasks = [];
+    let totalDetected = 0;
     for (const node of messageNodes) {
       const detected = detectFn(node);
+      totalDetected += detected.length;
       for (const d of detected) {
         if (window.__chatvaultCapturedAttachment(d.filename)) continue;
         tasks.push({ node, filename: d.filename });
@@ -29,6 +36,13 @@
       }
       if (tasks.length >= MAX_CLICKS) break;
     }
+    console.log(
+      "[ChatVault cs] auto-click scan:",
+      totalDetected,
+      "attachments detected,",
+      tasks.length,
+      "uncached and queued for click",
+    );
     if (tasks.length === 0) return;
     console.log(
       "[ChatVault cs] auto-clicking",
@@ -198,4 +212,5 @@
   }
 
   window.__chatvaultAutoClickUncached = autoClickUncached;
+  console.log("[ChatVault cs] auto-click module loaded");
 })();
