@@ -143,14 +143,56 @@ async function extractConversation() {
   };
 }
 
+function dumpMissingTextFiles(json, byFilename) {
+  const dumped = new Set();
+  const walk = (obj) => {
+    if (!obj || typeof obj !== "object") return;
+    if (Array.isArray(obj)) {
+      for (const v of obj) walk(v);
+      return;
+    }
+    const name = obj.file_name || obj.filename || obj.name;
+    if (
+      typeof name === "string" &&
+      /\.[a-zA-Z0-9]{1,10}$/.test(name) &&
+      !dumped.has(name) &&
+      !byFilename.get(name)?.text
+    ) {
+      const summary = Object.fromEntries(
+        Object.entries(obj).map(([k, v]) => [
+          k,
+          typeof v === "string"
+            ? `"${v.slice(0, 80)}${v.length > 80 ? `…(${v.length}ch)` : ""}"`
+            : v == null
+              ? String(v)
+              : typeof v === "object"
+                ? Array.isArray(v)
+                  ? `Array(${v.length})`
+                  : `Object{${Object.keys(v).slice(0, 6).join(",")}}`
+                : String(v),
+        ]),
+      );
+      console.log("[ChatVault cs] no-text file shape:", name, summary);
+      dumped.add(name);
+    }
+    for (const v of Object.values(obj)) walk(v);
+  };
+  walk(json);
+}
+
 async function probeClaudeFileEndpoints(orgId, fileId, filename) {
-  const base = `/api/organizations/${orgId}/files/${fileId}`;
+  // Try both the org-scoped pattern and the bare patterns the bridge has
+  // observed Claude use. Order: most specific to least.
   const candidates = [
-    base,
-    `${base}/content`,
-    `${base}/download`,
-    `${base}/preview`,
-    `${base}/raw`,
+    `/api/organizations/${orgId}/files/${fileId}`,
+    `/api/organizations/${orgId}/files/${fileId}/content`,
+    `/api/organizations/${orgId}/files/${fileId}/download`,
+    `/api/organizations/${orgId}/files/${fileId}/preview`,
+    `/api/organizations/_/files/${fileId}`,
+    `/api/organizations/_/files/${fileId}/content`,
+    `/api/files/${fileId}`,
+    `/api/files/${fileId}/content`,
+    `/api/files/${fileId}/download`,
   ];
   for (const url of candidates) {
     try {
@@ -303,6 +345,9 @@ async function harvestClaudeFileIndex() {
       "with inlined text, for org",
       orgId.slice(0, 8),
     );
+    // Files without text — dump their object so we can see what content
+    // fields they have (if any).
+    dumpMissingTextFiles(json, byFilename);
     return { orgId, byFilename };
   } catch (err) {
     console.log("[ChatVault cs] harvest error", err);
