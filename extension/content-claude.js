@@ -63,10 +63,23 @@ async function extractConversation() {
     );
   }
 
-  // Claude renders attachment thumbnails OUTSIDE the message text bubble
-  // (in a sibling subtree of the same "turn container"). Scan the whole
-  // document for attachment-shaped imgs and route each to the nearest
-  // user message entry.
+  // Claude renders attachment thumbnails/cards OUTSIDE the message text
+  // bubble (in a sibling subtree of the same "turn container"). For each
+  // user entry, expand to the largest ancestor that doesn't include any
+  // other message; run attachment detection on THAT scope. This catches
+  // both inline preview <img> tags AND filename cards for documents
+  // (.mlx, .mat, .ipynb, etc.) that Claude renders without a preview img.
+  const detectionScope = new Map();
+  for (const entry of entries) {
+    detectionScope.set(
+      entry,
+      entry.role === "user" ? expandToTurnContainer(entry, entries) : entry.node,
+    );
+  }
+
+  // Global img safety net: if expansion missed a thumbnail subtree (the
+  // turn container can be hard to pin down on Claude), route it by
+  // nearest user message.
   const globalImgAttachments = mapGlobalImgsToEntries(entries);
 
   // For any detected attachments not yet in cache, drive the page's own
@@ -74,7 +87,7 @@ async function extractConversation() {
   // doesn't auto-fetch).
   if (window.__chatvaultAutoClickUncached) {
     await window.__chatvaultAutoClickUncached(
-      entries.map((e) => e.node),
+      entries.map((e) => detectionScope.get(e)),
       (n) => window.__chatvaultDetectAttachments(n, isAttachmentUrl),
     );
   }
@@ -83,7 +96,7 @@ async function extractConversation() {
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
     const detected = window.__chatvaultDetectAttachments(
-      entry.node,
+      detectionScope.get(entry),
       isAttachmentUrl,
     );
     // Merge in global-img attachments routed to this entry.
@@ -120,6 +133,23 @@ async function extractConversation() {
     messages,
     metadata: { provider: "claude", extractedFrom: location.href },
   };
+}
+
+function expandToTurnContainer(entry, allEntries) {
+  // Walk up until including the next ancestor would also include another
+  // message entry. The result is the "turn container" — the user's
+  // message text + any attachment thumbnails/cards rendered alongside.
+  let candidate = entry.node;
+  let parent = entry.node.parentElement;
+  while (parent) {
+    const containsOther = allEntries.some(
+      (e) => e !== entry && parent.contains(e.node),
+    );
+    if (containsOther) break;
+    candidate = parent;
+    parent = parent.parentElement;
+  }
+  return candidate;
 }
 
 function mapGlobalImgsToEntries(entries) {
