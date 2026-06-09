@@ -73,7 +73,7 @@ export function ManualPasteInput({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Pasted conversation"
-          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
         />
       </label>
 
@@ -86,7 +86,7 @@ export function ManualPasteInput({
           onChange={(e) => setText(e.target.value)}
           placeholder={PLACEHOLDER}
           rows={16}
-          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-mono text-[13px] leading-relaxed outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-mono text-[13px] leading-relaxed outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
         />
       </label>
 
@@ -98,7 +98,7 @@ export function ManualPasteInput({
             <span className="text-slate-400">No content detected.</span>
           ) : (
             <>
-              <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+              <Sparkles className="h-3.5 w-3.5 text-amber-600" />
               <span>
                 <span className="font-semibold text-slate-800">
                   {totalMessages}
@@ -120,7 +120,7 @@ export function ManualPasteInput({
           type="button"
           onClick={() => canSubmit && onParsed(preview)}
           disabled={!canSubmit}
-          className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-4 py-2 text-sm font-medium shadow-sm shadow-violet-500/30 hover:shadow-md hover:shadow-violet-500/40 hover:-translate-y-px transition-all disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 focus-ring"
+          className="rounded-lg bg-gradient-to-r from-amber-400 to-amber-600 text-white px-4 py-2 text-sm font-medium shadow-sm shadow-amber-500/30 hover:shadow-md hover:shadow-amber-500/40 hover:-translate-y-px transition-all disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 focus-ring"
         >
           Continue &rarr;
         </button>

@@ -122,7 +122,7 @@ export function ExportOptionsPanel({
           currently-visible message{visibleCount === 1 ? "" : "s"}.
         </p>
         {attachmentSummary && attachmentSummary.total > 0 && (
-          <p className="text-[11px] mb-2.5 leading-relaxed rounded-md bg-violet-50 border border-violet-100 text-violet-800 px-2.5 py-1.5">
+          <p className="text-[11px] mb-2.5 leading-relaxed rounded-md bg-amber-50 border border-amber-100 text-amber-800 px-2.5 py-1.5">
             <Paperclip className="inline h-3 w-3 mr-1 -mt-0.5" />
             {attachmentSummary.downloadable > 0 ? (
               <>
@@ -157,7 +157,7 @@ export function ExportOptionsPanel({
             type="button"
             onClick={onExportMarkdown}
             disabled={exportDisabled}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-3 py-2 text-sm font-medium shadow-sm shadow-violet-500/30 hover:shadow-md hover:shadow-violet-500/40 hover:-translate-y-px transition-all disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 focus-ring"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-600 text-white px-3 py-2 text-sm font-medium shadow-sm shadow-amber-500/30 hover:shadow-md hover:shadow-amber-500/40 hover:-translate-y-px transition-all disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 focus-ring"
           >
             <FileText className="h-3.5 w-3.5" /> Markdown
           </button>
@@ -244,7 +244,7 @@ function Check({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}
-        className="mt-0.5 h-3.5 w-3.5 rounded accent-violet-600"
+        className="mt-0.5 h-3.5 w-3.5 rounded accent-amber-600"
       />
       <span className="flex-1">
         <span

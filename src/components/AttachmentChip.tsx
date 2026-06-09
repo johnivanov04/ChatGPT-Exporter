@@ -42,14 +42,14 @@ export function AttachmentChip({ attachment }: AttachmentChipProps) {
       title={title}
       className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md border transition max-w-[260px] ${
         downloadable
-          ? "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100 hover:border-violet-300 cursor-pointer focus-ring"
+          ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 hover:border-amber-300 cursor-pointer focus-ring"
           : "border-slate-200 bg-slate-50 text-slate-600 cursor-default"
       }`}
     >
       <Paperclip className="h-3 w-3 shrink-0" />
       <span className="truncate">{attachment.filename || "attachment"}</span>
       {sizeLabel && (
-        <span className={`shrink-0 ${downloadable ? "text-violet-600" : "text-slate-400"}`}>
+        <span className={`shrink-0 ${downloadable ? "text-amber-600" : "text-slate-400"}`}>
           {sizeLabel}
         </span>
       )}

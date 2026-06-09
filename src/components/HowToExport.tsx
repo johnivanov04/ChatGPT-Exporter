@@ -243,7 +243,7 @@ export function HowToExport({
                 onClick={() => setActive(g.id)}
                 className={`text-sm px-3 py-1.5 rounded-md font-medium transition ${
                   active === g.id
-                    ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-500/30"
+                    ? "bg-gradient-to-r from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-500/30"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
@@ -277,8 +277,8 @@ export function HowToExport({
               ))}
             </ol>
             {guide.tips && guide.tips.length > 0 && (
-              <div className="mt-4 rounded-lg bg-violet-50/60 border border-violet-100 px-3.5 py-2.5">
-                <p className="text-[11px] uppercase tracking-wider font-semibold text-violet-700 mb-1">
+              <div className="mt-4 rounded-lg bg-amber-50/60 border border-amber-100 px-3.5 py-2.5">
+                <p className="text-[11px] uppercase tracking-wider font-semibold text-amber-700 mb-1">
                   Tips
                 </p>
                 <ul className="space-y-1">
@@ -303,7 +303,7 @@ function ExtLink({ href, children }: { href: string; children: React.ReactNode }
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-0.5 text-violet-700 hover:text-violet-900 underline underline-offset-2"
+      className="inline-flex items-center gap-0.5 text-amber-700 hover:text-amber-900 underline underline-offset-2"
     >
       {children}
       <ExternalLink className="h-3 w-3" />

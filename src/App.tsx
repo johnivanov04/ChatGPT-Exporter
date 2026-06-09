@@ -138,7 +138,7 @@ export default function App() {
             onClick={goHome}
             className="flex items-center gap-2.5 text-left group focus-ring rounded-md"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-500/30 transition group-hover:shadow-md group-hover:shadow-violet-500/40">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-500/30 transition group-hover:shadow-md group-hover:shadow-amber-500/40">
               <Sparkles className="h-4 w-4" strokeWidth={2.4} />
             </span>
             <div className="flex flex-col leading-tight">

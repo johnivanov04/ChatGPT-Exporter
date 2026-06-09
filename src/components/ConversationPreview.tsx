@@ -144,7 +144,7 @@ export function ConversationPreview({
                 )}
               {typeof conversation.metadata?.model === "string" && (
                 <span className="inline-flex items-center gap-1">
-                  <span className="h-1 w-1 rounded-full bg-violet-500" />
+                  <span className="h-1 w-1 rounded-full bg-amber-500" />
                   {String(conversation.metadata.model)}
                 </span>
               )}
@@ -248,7 +248,7 @@ function MessageRow({
         )}
       </div>
       <div
-        className={`prose prose-slate max-w-none prose-sm prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-lg prose-code:before:hidden prose-code:after:hidden prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-violet-600 prose-a:no-underline hover:prose-a:underline ${tone.body}`}
+        className={`prose prose-slate max-w-none prose-sm prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-lg prose-code:before:hidden prose-code:after:hidden prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-amber-600 prose-a:no-underline hover:prose-a:underline ${tone.body}`}
       >
         {contentType === "code" || contentType === "execution_output" ? (
           <pre className="!bg-slate-900 !text-slate-100 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed">
@@ -287,10 +287,10 @@ function roleStyles(role: ChatRole): Tone {
       return {
         icon: User,
         avatar:
-          "bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-500/30",
-        label: "text-violet-700",
+          "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-500/30",
+        label: "text-amber-700",
         body: "text-slate-900",
-        leftBorder: "border-l-violet-500/70",
+        leftBorder: "border-l-amber-500/70",
       };
     case "assistant":
       return {

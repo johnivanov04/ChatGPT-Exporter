@@ -18,7 +18,7 @@ export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
   return (
     <div>
       <div className="text-center max-w-3xl mx-auto mb-12">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50/80 px-3 py-1 text-xs font-medium text-violet-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-xs font-medium text-amber-700">
           <Zap className="h-3 w-3" /> Local-first &middot; nothing leaves your
           browser
         </span>
@@ -115,7 +115,7 @@ function Card({
   }
 
   const primaryClasses =
-    "before:absolute before:inset-0 before:rounded-xl before:p-[1.5px] before:bg-gradient-to-br before:from-violet-500/70 before:via-fuchsia-500/40 before:to-rose-400/40 before:[mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] before:[mask-composite:exclude] before:pointer-events-none";
+    "before:absolute before:inset-0 before:rounded-xl before:p-[1.5px] before:bg-gradient-to-br before:from-amber-400/70 before:via-amber-500/50 before:to-amber-700/40 before:[mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] before:[mask-composite:exclude] before:pointer-events-none";
   const variantClasses =
     variant === "primary"
       ? `bg-white shadow-sm hover:shadow-xl hover:-translate-y-0.5 ${primaryClasses}`
@@ -147,13 +147,13 @@ function CardInner({
 }) {
   const iconWrap =
     variant === "primary"
-      ? "bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-sm shadow-violet-500/30"
+      ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-500/30"
       : variant === "secondary"
         ? "bg-slate-900 text-white"
         : "bg-slate-200 text-slate-500";
   const badge =
     variant === "primary"
-      ? "text-violet-700 bg-violet-100"
+      ? "text-amber-700 bg-amber-100"
       : variant === "secondary"
         ? "text-slate-700 bg-slate-100"
         : "text-slate-500 bg-slate-200";

@@ -151,8 +151,8 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         onDrop={onDrop}
         className={`group block rounded-xl border-2 border-dashed p-12 text-center cursor-pointer transition-all ${
           dragOver
-            ? "border-violet-500 bg-violet-50/70 scale-[1.01]"
-            : "border-slate-300 hover:border-violet-400 hover:bg-slate-50/60 bg-white/40"
+            ? "border-amber-500 bg-amber-50/70 scale-[1.01]"
+            : "border-slate-300 hover:border-amber-400 hover:bg-slate-50/60 bg-white/40"
         }`}
       >
         <input
@@ -169,8 +169,8 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         <div
           className={`mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl transition ${
             dragOver
-              ? "bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/30"
-              : "bg-slate-100 text-slate-500 group-hover:bg-violet-100 group-hover:text-violet-700"
+              ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/30"
+              : "bg-slate-100 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700"
           }`}
         >
           <UploadCloud className="h-6 w-6" strokeWidth={2} />
@@ -221,7 +221,7 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
 
       {state.kind === "reading" && (
         <div className="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 flex items-center gap-3 animate-fade-up">
-          <Loader2 className="h-4 w-4 text-violet-600 animate-spin" />
+          <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
           <span>
             Reading and parsing{" "}
             <span className="font-mono">{state.filename}</span>&hellip;
