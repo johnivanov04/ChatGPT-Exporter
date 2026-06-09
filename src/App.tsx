@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Sparkles, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { Landing } from "./components/Landing";
 import { UploadZip } from "./components/UploadZip";
 import { ConversationPicker } from "./components/ConversationPicker";
@@ -138,9 +138,13 @@ export default function App() {
             onClick={goHome}
             className="flex items-center gap-2.5 text-left group focus-ring rounded-md"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-500/30 transition group-hover:shadow-md group-hover:shadow-amber-500/40">
-              <Sparkles className="h-4 w-4" strokeWidth={2.4} />
-            </span>
+            <img
+              src="/favicon.svg"
+              alt=""
+              width="32"
+              height="32"
+              className="h-8 w-8 transition group-hover:scale-105"
+            />
             <div className="flex flex-col leading-tight">
               <span className="text-[15px] font-semibold tracking-tight text-slate-100">
                 Chat<span className="brand-gradient">Vault</span>
