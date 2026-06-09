@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#020617" />
+    <title>Privacy Policy — ChatVault</title>
+    <meta name="description" content="ChatVault privacy policy: no data collection, no telemetry, no servers." />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #020617; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+      a { color: #fbbf24; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 56px 24px 96px; }
+      header { display: flex; align-items: center; gap: 12px; margin-bottom: 48px; }
+      header img { width: 36px; height: 36px; }
+      header .name { font-size: 17px; font-weight: 600; color: #f1f5f9; }
+      header .sub { font-size: 11px; color: #94a3b8; }
+      h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin: 0 0 8px; color: #f8fafc; }
+      h2 { font-size: 17px; font-weight: 600; margin: 32px 0 10px; color: #fde68a; letter-spacing: -0.1px; }
+      p, li { font-size: 14.5px; line-height: 1.7; color: #cbd5e1; }
+      .updated { font-size: 12px; color: #64748b; margin-bottom: 36px; }
+      ul { padding-left: 22px; }
+      ul li { margin-bottom: 6px; }
+      .panel { margin-top: 20px; padding: 18px 20px; border: 1px solid rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.07); border-radius: 10px; }
+      .panel p { color: #fde68a; margin: 0; font-size: 14px; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: #0f172a; border: 1px solid #1e293b; padding: 1px 6px; border-radius: 4px; color: #e2e8f0; }
+      .back { display: inline-block; margin-top: 40px; font-size: 13px; color: #94a3b8; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <img src="/favicon.svg" alt="" />
+        <div>
+          <div class="name">ChatVault</div>
+          <div class="sub">Local-first AI conversation exporter</div>
+        </div>
+      </header>
+
+      <h1>Privacy Policy</h1>
+      <div class="updated">Last updated: June 9, 2026</div>
+
+      <div class="panel">
+        <p>Short version: ChatVault does not collect, store, or transmit any data about you or your conversations. Everything happens inside your browser. There is no backend.</p>
+      </div>
+
+      <h2>What we collect</h2>
+      <p>Nothing. There is no telemetry, no analytics, no error reporting, no fingerprinting, no advertising identifiers. The web app at chatvault.space and the ChatVault browser extension do not phone home.</p>
+
+      <h2>What ChatVault does with your conversations</h2>
+      <p>Your conversations are read into your browser's memory, normalized, optionally redacted, and rendered for you to download as PDF, Markdown, or JSON. When you close the tab, the data is discarded. Nothing is persisted to <code>localStorage</code>, <code>IndexedDB</code>, or any server.</p>
+
+      <h2>Browser extension permissions</h2>
+      <p>The ChatVault extension requests the following permissions and uses each one only for the purpose stated below. None of the data accessed by these permissions ever leaves your browser.</p>
+      <ul>
+        <li><code>activeTab</code> + <code>tabs</code> — to read the conversation DOM from the ChatGPT or Claude tab you click "Export" on, and to open a new tab pointing to chatvault.space.</li>
+        <li><code>storage</code> — to hand the conversation off to chatvault.space via <code>chrome.storage.local</code>. The handoff entry is deleted immediately after the web app reads it.</li>
+        <li>Host permissions for <code>chatgpt.com</code>, <code>chat.openai.com</code>, <code>claude.ai</code> — to scrape the DOM of the conversation page you are viewing and intercept attachment binaries the page itself fetches.</li>
+        <li>Host permission for <code>chatvault.space</code> — to deliver the captured conversation to the web app.</li>
+      </ul>
+
+      <h2>Attachments</h2>
+      <p>When the extension captures attachments (PDFs, images, code files), the binary data lives only in the extension's runtime cache for the duration of the export, is bundled into the ZIP you download, and is then released.</p>
+
+      <h2>Third-party services</h2>
+      <p>None. ChatVault has no integrations with analytics platforms, advertising networks, A/B testing services, or third-party SDKs. The web app is hosted as static files on Vercel; Vercel's standard server access logs are subject to <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noreferrer">Vercel's own privacy policy</a>, and we do not have any custom logging on top of that.</p>
+
+      <h2>Open source</h2>
+      <p>The full source code for the web app and the extension is available at <a href="https://github.com/johnivanov04/ChatVault" target="_blank" rel="noreferrer">github.com/johnivanov04/ChatVault</a>. You can verify the privacy claims above by reading the code.</p>
+
+      <h2>Contact</h2>
+      <p>Questions or concerns: open an issue at <a href="https://github.com/johnivanov04/ChatVault/issues" target="_blank" rel="noreferrer">github.com/johnivanov04/ChatVault/issues</a>.</p>
+
+      <a class="back" href="/">← Back to ChatVault</a>
+    </div>
+  </body>
+</html>

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ChatVault",
-  "version": "0.5.0",
-  "description": "Export the current ChatGPT or Claude conversation to PDF, Markdown, or JSON. Local-first.",
+  "version": "0.6.0",
+  "description": "Export your ChatGPT or Claude conversations to PDF, Markdown, or JSON — including attached files. Local-first, no servers.",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Export to ChatVault",

@@ -12,10 +12,10 @@ import { deflateSync } from "node:zlib";
 const OUT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "icons");
 mkdirSync(OUT, { recursive: true });
 
-// Brand color: violet-600 (#7c3aed) blended with fuchsia-600 (#c026d3) along
-// a diagonal gradient. For a small toolbar icon a single-color square is
-// indistinguishable from a gradient, so we render a single mid-violet.
-const FILL = [148, 50, 224]; // mid-violet between #7c3aed and #c026d3
+// Brand: gunmetal slate body (matches the favicon vault color). At
+// toolbar sizes a single-color rounded square is indistinguishable from
+// the full vault SVG, so we render slate-700 to match the body fill.
+const FILL = [51, 65, 85]; // #334155 (slate-700)
 
 for (const size of [16, 32, 48, 128]) {
   const buf = makeRoundedSquarePng(size, FILL);
