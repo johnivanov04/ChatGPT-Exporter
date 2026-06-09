@@ -1,47 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
   <defs>
     <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#7e14ff"/>
+      <stop offset="0%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#1e293b"/>
     </linearGradient>
-    <linearGradient id="dial" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#c4b5fd"/>
-      <stop offset="100%" stop-color="#7e14ff"/>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="60%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#b45309"/>
     </linearGradient>
   </defs>
 
-  <!-- Document being deposited (behind safe, peeking out of slot) -->
+  <!-- Document being deposited (parchment, behind safe, peeking out of slot) -->
   <g transform="rotate(-7 24 9)">
-    <rect x="14" y="1" width="20" height="14" rx="1.5" fill="#f5f3ff"/>
-    <rect x="17" y="5" width="14" height="1.2" rx="0.6" fill="#c4b5fd"/>
-    <rect x="17" y="8" width="11" height="1.2" rx="0.6" fill="#c4b5fd"/>
-    <rect x="17" y="11" width="13" height="1.2" rx="0.6" fill="#c4b5fd"/>
+    <rect x="14" y="1" width="20" height="14" rx="1.5" fill="#fef3c7"/>
+    <rect x="17" y="5" width="14" height="1.2" rx="0.6" fill="#92400e" opacity="0.55"/>
+    <rect x="17" y="8" width="11" height="1.2" rx="0.6" fill="#92400e" opacity="0.55"/>
+    <rect x="17" y="11" width="13" height="1.2" rx="0.6" fill="#92400e" opacity="0.55"/>
   </g>
 
   <!-- Safe body -->
   <rect x="3" y="13" width="42" height="33" rx="5" fill="url(#body)"/>
 
-  <!-- Slot at top of safe (paper goes in here) -->
-  <rect x="13" y="13" width="22" height="3.5" rx="1" fill="#2a0764"/>
+  <!-- Slot at top of safe -->
+  <rect x="13" y="13" width="22" height="3.5" rx="1" fill="#0f172a"/>
 
   <!-- Inset door panel -->
-  <rect x="8" y="19" width="32" height="22" rx="2.5" fill="#5a1ec7" stroke="#2a0764" stroke-width="0.6"/>
+  <rect x="8" y="19" width="32" height="22" rx="2.5" fill="#334155" stroke="#0f172a" stroke-width="0.6"/>
 
   <!-- Hinges on left edge of door -->
-  <rect x="9" y="22.5" width="2" height="3" rx="0.5" fill="#2a0764"/>
-  <rect x="9" y="34.5" width="2" height="3" rx="0.5" fill="#2a0764"/>
+  <rect x="9" y="22.5" width="2" height="3" rx="0.5" fill="#0f172a"/>
+  <rect x="9" y="34.5" width="2" height="3" rx="0.5" fill="#0f172a"/>
 
-  <!-- Handle / lever -->
-  <rect x="13" y="28.5" width="6" height="3" rx="1.2" fill="#2a0764"/>
+  <!-- Brass lever handle -->
+  <rect x="13" y="28.5" width="6" height="3" rx="1.2" fill="#92400e"/>
+  <rect x="13.5" y="29" width="5" height="1" rx="0.5" fill="#fbbf24" opacity="0.7"/>
 
-  <!-- Combination dial -->
-  <circle cx="30" cy="30" r="6" fill="#2a0764"/>
-  <circle cx="30" cy="30" r="4.2" fill="url(#dial)"/>
-  <circle cx="30" cy="30" r="1.1" fill="#2a0764"/>
+  <!-- Brass combination dial -->
+  <circle cx="30" cy="30" r="6" fill="#0f172a"/>
+  <circle cx="30" cy="30" r="4.2" fill="url(#brass)"/>
+  <circle cx="30" cy="30" r="1.1" fill="#92400e"/>
   <!-- Tick mark above dial -->
-  <rect x="29.5" y="22.5" width="1" height="1.6" rx="0.4" fill="#2a0764"/>
+  <rect x="29.5" y="22.5" width="1" height="1.6" rx="0.4" fill="#fbbf24"/>
 
   <!-- Feet -->
-  <rect x="7" y="46" width="4" height="2" rx="0.5" fill="#5a1ec7"/>
-  <rect x="37" y="46" width="4" height="2" rx="0.5" fill="#5a1ec7"/>
+  <rect x="7" y="46" width="4" height="2" rx="0.5" fill="#334155"/>
+  <rect x="37" y="46" width="4" height="2" rx="0.5" fill="#334155"/>
 </svg>

@@ -27,8 +27,8 @@ function crc32(buf) {
 
 const PUBLIC = resolve(dirname(fileURLToPath(import.meta.url)), "..", "public");
 
-// Brand violet (matches favicon).
-const FILL = [134, 59, 255]; // #863bff
+// Gunmetal slate (matches favicon body).
+const FILL = [51, 65, 85]; // #334155 (slate-700)
 
 writeFileSync(resolve(PUBLIC, "pwa-192.png"), makePng(192, FILL, 0.22));
 writeFileSync(resolve(PUBLIC, "pwa-512.png"), makePng(512, FILL, 0.22));

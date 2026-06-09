@@ -16,8 +16,8 @@ export default defineConfig({
         short_name: 'ChatVault',
         description:
           'Local-first exporter for ChatGPT, Claude, and Gemini conversations. Browser-only, no backend.',
-        theme_color: '#0a0118',
-        background_color: '#0a0118',
+        theme_color: '#020617',
+        background_color: '#020617',
         display: 'standalone',
         start_url: '/',
         scope: '/',
