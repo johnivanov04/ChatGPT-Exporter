@@ -22,6 +22,11 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         icons: [
+          // Vector vault icon — Chrome 100+, Edge, Samsung Internet use this
+          // at any size.
+          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
+          // Solid-violet PNG fallbacks for systems that need a raster icon
+          // (older Android home screen, App Library, etc.).
           { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
           {
