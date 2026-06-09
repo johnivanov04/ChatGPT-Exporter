@@ -18,15 +18,15 @@ export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
   return (
     <div>
       <div className="text-center max-w-3xl mx-auto mb-12">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-xs font-medium text-amber-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
           <Zap className="h-3 w-3" /> Local-first &middot; nothing leaves your
           browser
         </span>
-        <h1 className="mt-5 text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900 leading-[1.1]">
+        <h1 className="mt-5 text-4xl sm:text-5xl font-semibold tracking-tight text-slate-100 leading-[1.1]">
           Turn AI conversations into{" "}
           <span className="brand-gradient">clean exports</span>
         </h1>
-        <p className="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
+        <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
           Drop in your <strong>ChatGPT</strong>, <strong>Claude</strong>, or{" "}
           <strong>Gemini</strong> export, pick a chat, preview it, and download
           PDF, Markdown, or JSON. Everything runs in this tab &mdash; no
@@ -108,7 +108,7 @@ function Card({
 
   if (disabled) {
     return (
-      <div className="relative rounded-xl border border-dashed border-slate-300 bg-white/50 p-6 flex flex-col h-full text-left opacity-70">
+      <div className="relative rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-6 flex flex-col h-full text-left opacity-70">
         <CardInner Icon={Icon} subtitle={subtitle} title={title} description={description} variant={variant} />
       </div>
     );
@@ -118,8 +118,8 @@ function Card({
     "before:absolute before:inset-0 before:rounded-xl before:p-[1.5px] before:bg-gradient-to-br before:from-amber-400/70 before:via-amber-500/50 before:to-amber-700/40 before:[mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] before:[mask-composite:exclude] before:pointer-events-none";
   const variantClasses =
     variant === "primary"
-      ? `bg-white shadow-sm hover:shadow-xl hover:-translate-y-0.5 ${primaryClasses}`
-      : "bg-white border border-slate-200 hover:border-slate-400 hover:shadow-md hover:-translate-y-0.5";
+      ? `bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-0.5 ${primaryClasses}`
+      : "bg-slate-900 border border-slate-700 hover:border-slate-400 hover:shadow-md hover:-translate-y-0.5";
 
   return (
     <button
@@ -150,13 +150,13 @@ function CardInner({
       ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-500/30"
       : variant === "secondary"
         ? "bg-slate-900 text-white"
-        : "bg-slate-200 text-slate-500";
+        : "bg-slate-700 text-slate-400";
   const badge =
     variant === "primary"
-      ? "text-amber-700 bg-amber-100"
+      ? "text-amber-300 bg-amber-500/15"
       : variant === "secondary"
-        ? "text-slate-700 bg-slate-100"
-        : "text-slate-500 bg-slate-200";
+        ? "text-slate-200 bg-slate-800"
+        : "text-slate-400 bg-slate-700";
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -167,10 +167,10 @@ function CardInner({
           {subtitle}
         </span>
       </div>
-      <h3 className="text-base font-semibold text-slate-900 leading-snug">
+      <h3 className="text-base font-semibold text-slate-100 leading-snug">
         {title}
       </h3>
-      <p className="mt-1.5 text-sm text-slate-600 leading-relaxed flex-1">
+      <p className="mt-1.5 text-sm text-slate-300 leading-relaxed flex-1">
         {description}
       </p>
     </>
@@ -187,12 +187,12 @@ function Feature({
   description: string;
 }) {
   return (
-    <div className="rounded-lg bg-white/40 border border-slate-200/60 px-4 py-3">
-      <div className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-slate-700">
+    <div className="rounded-lg bg-slate-900/40 border border-slate-700/60 px-4 py-3">
+      <div className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-slate-800 text-slate-200">
         <Icon className="h-3.5 w-3.5" />
       </div>
-      <p className="mt-2 text-sm font-medium text-slate-800">{title}</p>
-      <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+      <p className="mt-2 text-sm font-medium text-slate-100">{title}</p>
+      <p className="text-xs text-slate-400 mt-0.5">{description}</p>
     </div>
   );
 }

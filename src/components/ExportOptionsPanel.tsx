@@ -44,10 +44,10 @@ export function ExportOptionsPanel({
     onChange({ ...options, ...patch });
 
   return (
-    <aside className="no-print rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-5 text-sm sticky top-20 self-start">
+    <aside className="no-print rounded-2xl border border-slate-700/80 bg-slate-900/80 backdrop-blur-sm shadow-sm p-5 text-sm sticky top-20 self-start">
       <Section icon={Eye} title="View">
-        <p className="text-[11px] text-slate-500 mb-2 leading-relaxed">
-          <span className="font-semibold text-slate-700">
+        <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">
+          <span className="font-semibold text-slate-200">
             {visibleCount}
           </span>{" "}
           message{visibleCount === 1 ? "" : "s"} shown
@@ -55,7 +55,7 @@ export function ExportOptionsPanel({
             <>
               {" "}
               &middot;{" "}
-              <span className="text-slate-500">
+              <span className="text-slate-400">
                 {internalCount} internal hidden
               </span>
             </>
@@ -109,20 +109,20 @@ export function ExportOptionsPanel({
           checked={options.redactApiKeys}
           onChange={(v) => set({ redactApiKeys: v })}
         />
-        <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+        <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
           Preview updates live. Review the file before sharing &mdash; redaction
           is not perfect.
         </p>
       </Section>
 
       <Section icon={Download} title="Download">
-        <p className="text-[11px] text-slate-500 mb-2.5 leading-relaxed">
+        <p className="text-[11px] text-slate-400 mb-2.5 leading-relaxed">
           Exports the{" "}
-          <span className="font-semibold text-slate-700">{visibleCount}</span>{" "}
+          <span className="font-semibold text-slate-200">{visibleCount}</span>{" "}
           currently-visible message{visibleCount === 1 ? "" : "s"}.
         </p>
         {attachmentSummary && attachmentSummary.total > 0 && (
-          <p className="text-[11px] mb-2.5 leading-relaxed rounded-md bg-amber-50 border border-amber-100 text-amber-800 px-2.5 py-1.5">
+          <p className="text-[11px] mb-2.5 leading-relaxed rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-100 px-2.5 py-1.5">
             <Paperclip className="inline h-3 w-3 mr-1 -mt-0.5" />
             {attachmentSummary.downloadable > 0 ? (
               <>
@@ -135,7 +135,7 @@ export function ExportOptionsPanel({
                   <>
                     {" "}
                     &middot;{" "}
-                    <span className="text-amber-700">
+                    <span className="text-amber-300">
                       {attachmentSummary.withErrors} couldn't be fetched
                     </span>
                   </>
@@ -146,7 +146,7 @@ export function ExportOptionsPanel({
               <>
                 {attachmentSummary.total} attachment
                 {attachmentSummary.total === 1 ? "" : "s"} detected but{" "}
-                <span className="text-amber-700">binary not captured</span>{" "}
+                <span className="text-amber-300">binary not captured</span>{" "}
                 &mdash; filenames only.
               </>
             )}
@@ -157,7 +157,7 @@ export function ExportOptionsPanel({
             type="button"
             onClick={onExportMarkdown}
             disabled={exportDisabled}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-600 text-white px-3 py-2 text-sm font-medium shadow-sm shadow-amber-500/30 hover:shadow-md hover:shadow-amber-500/40 hover:-translate-y-px transition-all disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 focus-ring"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-400 to-amber-600 text-white px-3 py-2 text-sm font-medium shadow-sm shadow-amber-500/30 hover:shadow-md hover:shadow-amber-500/40 hover:-translate-y-px transition-all disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0 focus-ring"
           >
             <FileText className="h-3.5 w-3.5" /> Markdown
           </button>
@@ -165,7 +165,7 @@ export function ExportOptionsPanel({
             type="button"
             onClick={onExportJson}
             disabled={exportDisabled}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-medium hover:bg-slate-800 hover:-translate-y-px transition-all disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:translate-y-0 focus-ring"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-medium hover:bg-slate-800 hover:-translate-y-px transition-all disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed disabled:translate-y-0 focus-ring"
           >
             <FileJson className="h-3.5 w-3.5" /> JSON
           </button>
@@ -173,7 +173,7 @@ export function ExportOptionsPanel({
             type="button"
             onClick={onExportPdf}
             disabled={exportDisabled}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white text-slate-900 px-3 py-2 text-sm font-medium hover:border-slate-400 hover:bg-slate-50 hover:-translate-y-px transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed disabled:translate-y-0 disabled:border-slate-200 focus-ring"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900 text-slate-100 px-3 py-2 text-sm font-medium hover:border-slate-400 hover:bg-slate-900 hover:-translate-y-px transition-all disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:translate-y-0 disabled:border-slate-700 focus-ring"
           >
             <Printer className="h-3.5 w-3.5" /> Save as PDF
           </button>
@@ -182,13 +182,13 @@ export function ExportOptionsPanel({
               type="button"
               onClick={onExportAttachmentsZip}
               disabled={exportDisabled}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 px-3 py-2 text-xs font-medium hover:border-slate-300 hover:bg-slate-100 transition-all focus-ring"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900 text-slate-200 px-3 py-2 text-xs font-medium hover:border-slate-700 hover:bg-slate-800 transition-all focus-ring"
             >
               <Paperclip className="h-3 w-3" /> Attachments only (.zip)
             </button>
           )}
         </div>
-        <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+        <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
           PDF opens your browser print dialog &mdash; pick <em>Save as PDF</em>.
         </p>
       </Section>
@@ -210,8 +210,8 @@ function Section({
   return (
     <div className="mt-5 first:mt-0">
       <div className="flex items-center gap-1.5 mb-2.5">
-        <Icon className="h-3.5 w-3.5 text-slate-400" />
-        <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+        <Icon className="h-3.5 w-3.5 text-slate-500" />
+        <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
           {title}
         </p>
       </div>
@@ -248,12 +248,12 @@ function Check({
       />
       <span className="flex-1">
         <span
-          className={`text-slate-800 ${disabled ? "" : "group-hover:text-slate-900"} text-[13px]`}
+          className={`text-slate-100 ${disabled ? "" : "group-hover:text-slate-100"} text-[13px]`}
         >
           {label}
         </span>
         {hint && (
-          <span className="block text-[11px] text-slate-500 leading-snug">
+          <span className="block text-[11px] text-slate-400 leading-snug">
             {hint}
           </span>
         )}

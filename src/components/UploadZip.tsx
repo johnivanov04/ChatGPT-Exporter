@@ -121,13 +121,13 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
   );
 
   return (
-    <div className="max-w-3xl mx-auto rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-sm p-8">
+    <div className="max-w-3xl mx-auto rounded-2xl border border-slate-700/80 bg-slate-900/80 backdrop-blur-sm shadow-sm p-8">
       <div className="flex items-start justify-between mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
             Upload an export ZIP
           </h2>
-          <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">
+          <p className="mt-1.5 text-sm text-slate-300 leading-relaxed">
             We auto-detect <strong>ChatGPT</strong>, <strong>Claude</strong>,
             and <strong>Gemini (Google Takeout)</strong> exports. Drop the ZIP
             in &mdash; we'll show what we found.
@@ -136,7 +136,7 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="shrink-0 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition px-2 py-1 rounded-md hover:bg-slate-100 focus-ring"
+          className="shrink-0 inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-100 transition px-2 py-1 rounded-md hover:bg-slate-800 focus-ring"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
@@ -151,8 +151,8 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         onDrop={onDrop}
         className={`group block rounded-xl border-2 border-dashed p-12 text-center cursor-pointer transition-all ${
           dragOver
-            ? "border-amber-500 bg-amber-50/70 scale-[1.01]"
-            : "border-slate-300 hover:border-amber-400 hover:bg-slate-50/60 bg-white/40"
+            ? "border-amber-500 bg-amber-500/10 scale-[1.01]"
+            : "border-slate-700 hover:border-amber-400 hover:bg-slate-900/60 bg-slate-900/40"
         }`}
       >
         <input
@@ -170,21 +170,21 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
           className={`mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl transition ${
             dragOver
               ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/30"
-              : "bg-slate-100 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700"
+              : "bg-slate-800 text-slate-400 group-hover:bg-amber-500/15 group-hover:text-amber-300"
           }`}
         >
           <UploadCloud className="h-6 w-6" strokeWidth={2} />
         </div>
-        <p className="mt-4 text-slate-800 font-medium">
-          Drag and drop your <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">.zip</code> here
+        <p className="mt-4 text-slate-100 font-medium">
+          Drag and drop your <code className="rounded bg-slate-800 px-1.5 py-0.5 text-xs font-mono">.zip</code> here
         </p>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-400">
           or click anywhere in this box to choose a file
         </p>
       </label>
 
       {state.kind === "confirm-huge" && (
-        <div className="mt-6 rounded-xl bg-amber-50/80 border border-amber-200 p-4 text-sm text-amber-900 animate-fade-up">
+        <div className="mt-6 rounded-xl bg-amber-500/10 border border-amber-500/40 p-4 text-sm text-amber-100 animate-fade-up">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-600" />
             <div className="flex-1">
@@ -209,7 +209,7 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
                 <button
                   type="button"
                   onClick={() => setState({ kind: "idle" })}
-                  className="rounded-md border border-amber-300 px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100 transition focus-ring"
+                  className="rounded-md border border-amber-300 px-3 py-1.5 text-sm text-amber-100 hover:bg-amber-500/15 transition focus-ring"
                 >
                   Pick a different file
                 </button>
@@ -220,7 +220,7 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
       )}
 
       {state.kind === "reading" && (
-        <div className="mt-6 rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 flex items-center gap-3 animate-fade-up">
+        <div className="mt-6 rounded-xl bg-slate-900 border border-slate-700 p-4 text-sm text-slate-200 flex items-center gap-3 animate-fade-up">
           <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
           <span>
             Reading and parsing{" "}
@@ -248,7 +248,7 @@ export function UploadZip({ onLoaded, onCancel }: UploadZipProps) {
         </div>
       )}
 
-      <p className="mt-6 inline-flex items-center gap-1.5 text-xs text-slate-500">
+      <p className="mt-6 inline-flex items-center gap-1.5 text-xs text-slate-400">
         <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
         The file never leaves your browser. Read in-memory with JSZip and
         discarded when you close the tab.

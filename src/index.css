@@ -10,8 +10,8 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto,
     ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  color: #0f172a;
-  background-color: #fafaf9;
+  color: #e2e8f0;
+  background-color: #020617;
   background-image:
     radial-gradient(
       ellipse 1200px 600px at 0% -10%,
@@ -74,14 +74,14 @@ body {
 @supports (scrollbar-width: thin) {
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
+    scrollbar-color: rgba(226, 232, 240, 0.18) transparent;
   }
 }
 
 /* Glow ring on focused interactive surfaces */
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.22);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.28);
 }
 
 /* ----------------------- Print-only layout (PDF) ----------------------- */

@@ -116,12 +116,12 @@ export function ConversationPreview({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 transition px-2 py-1 rounded-md hover:bg-slate-100 focus-ring"
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-100 transition px-2 py-1 rounded-md hover:bg-slate-800 focus-ring"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to list
         </button>
-        <span className="text-xs text-slate-500">
-          <span className="font-semibold text-slate-700">
+        <span className="text-xs text-slate-400">
+          <span className="font-semibold text-slate-200">
             {conversation.messages.length}
           </span>{" "}
           total messages
@@ -129,12 +129,12 @@ export function ConversationPreview({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_19rem] gap-6">
-        <article className="rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm shadow-sm overflow-hidden">
-          <header className="border-b border-slate-100 px-7 py-6 bg-gradient-to-r from-slate-50/80 to-transparent">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 leading-tight">
+        <article className="rounded-2xl border border-slate-700/80 bg-slate-900/80 backdrop-blur-sm shadow-sm overflow-hidden">
+          <header className="border-b border-slate-800 px-7 py-6 bg-gradient-to-r from-slate-50/80 to-transparent">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-100 leading-tight">
               {conversation.title}
             </h2>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
               {conversation.createdAt && (
                 <span>Created {formatDateTime(conversation.createdAt)}</span>
               )}
@@ -152,7 +152,7 @@ export function ConversationPreview({
           </header>
 
           {exportable.messages.length === 0 ? (
-            <div className="px-7 py-16 text-center text-sm text-slate-500">
+            <div className="px-7 py-16 text-center text-sm text-slate-400">
               <p>
                 No messages to show
                 {internalCount > 0 &&
@@ -232,23 +232,23 @@ function MessageRow({
           {message.role}
         </span>
         {internal && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 font-mono">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-400 font-mono">
             {contentType}
           </span>
         )}
         {showMessageNumbers && (
-          <span className="text-[11px] text-slate-400 font-mono">
+          <span className="text-[11px] text-slate-500 font-mono">
             #{displayIndex + 1}
           </span>
         )}
         {showTimestamps && message.createdAt && (
-          <span className="text-[11px] text-slate-400 ml-auto">
+          <span className="text-[11px] text-slate-500 ml-auto">
             {formatDateTime(message.createdAt)}
           </span>
         )}
       </div>
       <div
-        className={`prose prose-slate max-w-none prose-sm prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-lg prose-code:before:hidden prose-code:after:hidden prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-amber-600 prose-a:no-underline hover:prose-a:underline ${tone.body}`}
+        className={`prose prose-invert max-w-none prose-sm prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-lg prose-code:before:hidden prose-code:after:hidden prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline ${tone.body}`}
       >
         {contentType === "code" || contentType === "execution_output" ? (
           <pre className="!bg-slate-900 !text-slate-100 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed">
@@ -288,8 +288,8 @@ function roleStyles(role: ChatRole): Tone {
         icon: User,
         avatar:
           "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm shadow-amber-500/30",
-        label: "text-amber-700",
-        body: "text-slate-900",
+        label: "text-amber-300",
+        body: "text-slate-100",
         leftBorder: "border-l-amber-500/70",
       };
     case "assistant":
@@ -297,31 +297,31 @@ function roleStyles(role: ChatRole): Tone {
         icon: Bot,
         avatar: "bg-emerald-100 text-emerald-700 border border-emerald-200",
         label: "text-emerald-700",
-        body: "text-slate-800",
+        body: "text-slate-100",
         leftBorder: "border-l-emerald-400/60",
       };
     case "system":
       return {
         icon: Settings,
-        avatar: "bg-amber-100 text-amber-700 border border-amber-200",
-        label: "text-amber-700",
-        body: "text-slate-700 italic",
+        avatar: "bg-amber-500/15 text-amber-300 border border-amber-500/40",
+        label: "text-amber-300",
+        body: "text-slate-200 italic",
         leftBorder: "border-l-amber-400/60",
       };
     case "tool":
       return {
         icon: Wrench,
-        avatar: "bg-slate-100 text-slate-600 border border-slate-200",
-        label: "text-slate-600",
-        body: "text-slate-700",
+        avatar: "bg-slate-800 text-slate-300 border border-slate-700",
+        label: "text-slate-300",
+        body: "text-slate-200",
         leftBorder: "border-l-slate-300",
       };
     default:
       return {
         icon: HelpCircle,
-        avatar: "bg-slate-100 text-slate-500 border border-slate-200",
-        label: "text-slate-500",
-        body: "text-slate-700",
+        avatar: "bg-slate-800 text-slate-400 border border-slate-700",
+        label: "text-slate-400",
+        body: "text-slate-200",
         leftBorder: "border-l-slate-200",
       };
   }

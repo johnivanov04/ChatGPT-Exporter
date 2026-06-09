@@ -131,7 +131,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="no-print sticky top-0 z-30 backdrop-blur-md bg-white/70 border-b border-slate-200/60">
+      <header className="no-print sticky top-0 z-30 backdrop-blur-md bg-slate-900/70 border-b border-slate-700/60">
         <div className="max-w-6xl mx-auto px-6 py-3.5 flex items-center justify-between">
           <button
             type="button"
@@ -142,10 +142,10 @@ export default function App() {
               <Sparkles className="h-4 w-4" strokeWidth={2.4} />
             </span>
             <div className="flex flex-col leading-tight">
-              <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+              <span className="text-[15px] font-semibold tracking-tight text-slate-100">
                 Chat<span className="brand-gradient">Vault</span>
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-400">
                 Local-first &middot; private by design
               </span>
             </div>
@@ -154,7 +154,7 @@ export default function App() {
             href="https://github.com/johnivanov04/ChatVault"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition px-2.5 py-1.5 rounded-md hover:bg-slate-100 focus-ring"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-100 transition px-2.5 py-1.5 rounded-md hover:bg-slate-800 focus-ring"
           >
             <span className="hidden sm:inline">GitHub</span>
             <ExternalLink className="h-3 w-3" />
@@ -215,12 +215,12 @@ export default function App() {
       </main>
 
       <footer className="no-print mt-12">
-        <div className="max-w-6xl mx-auto px-6 py-5 text-xs text-slate-500 flex items-center justify-between gap-4 flex-wrap border-t border-slate-200/60">
+        <div className="max-w-6xl mx-auto px-6 py-5 text-xs text-slate-400 flex items-center justify-between gap-4 flex-wrap border-t border-slate-700/60">
           <span>
             All parsing happens locally in your browser. No uploads, no
             accounts, no tracking.
           </span>
-          <span className="text-slate-400">v0.1.0</span>
+          <span className="text-slate-500">v0.1.0</span>
         </div>
       </footer>
     </div>
