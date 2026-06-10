@@ -226,7 +226,23 @@ export default function App() {
             All parsing happens locally in your browser. No uploads, no
             accounts, no tracking.
           </span>
-          <span className="text-slate-500">v0.1.0</span>
+          <div className="flex items-center gap-4">
+            <a
+              href="/privacy"
+              className="text-slate-400 hover:text-amber-300 transition focus-ring rounded-sm"
+            >
+              Privacy
+            </a>
+            <a
+              href="https://github.com/johnivanov04/ChatVault"
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-400 hover:text-amber-300 transition focus-ring rounded-sm"
+            >
+              GitHub
+            </a>
+            <span className="text-slate-500">v0.1.0</span>
+          </div>
         </div>
       </footer>
     </div>
