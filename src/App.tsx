@@ -241,7 +241,7 @@ export default function App() {
             >
               GitHub
             </a>
-            <span className="text-slate-500">v0.1.0</span>
+            <span className="text-slate-500">v0.6.0</span>
           </div>
         </div>
       </footer>

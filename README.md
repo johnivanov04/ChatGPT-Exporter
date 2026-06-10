@@ -8,16 +8,18 @@ Converts ChatGPT / Claude / Gemini chats into clean **PDF**, **Markdown**, or **
 
 - **Upload a data-export ZIP** from any of ChatGPT, Claude, or Gemini (Google Takeout). Auto-detects which provider and uses the right parser.
 - **Paste a transcript** as a fallback. Recognizes `User:` / `[User]` / `You said:` markers and falls back to a heuristic for ChatGPT page copies (attachment filenames + `Thought for X` markers as structural anchors).
-- **Use the browser extension** to export your *current* ChatGPT or Claude tab in one click — including attached files (PDFs, images, MLX, IPYNB, any extension). See [`extension/README.md`](extension/README.md) for the architecture.
+- **Use the browser extension** to export your *current* ChatGPT or Claude tab in one click — including attached files. See [`extension/README.md`](extension/README.md) for the architecture.
 - **Preview** the full transcript with markdown rendering and role-distinguished messages, then download as PDF / Markdown / JSON (or `.zip` when attachments are present, containing the markdown/JSON plus an `attachments/` folder).
 - **Redact** emails / phone numbers / API keys (provider-specific patterns for OpenAI / Anthropic / AWS / Stripe / GitHub / Google / Slack) live in the preview before exporting.
+- **Try a sample** conversation right from the landing page — no upload required, just hit "see a sample conversation" to drop into the Preview screen with a demo chat.
+- **Install as a PWA** — Chrome/Edge offer an install button; on iOS use "Add to Home Screen". The app shell is precached so it works offline.
 
 ## Multi-provider matrix
 
 | Provider | ZIP import | Manual paste | Extension | Attachment binaries |
 |---|---|---|---|---|
 | **ChatGPT** | ✓ (text, multimodal, code, execution, thoughts, reasoning, browsing) | ✓ (classic markers + page-copy heuristic) | ✓ | ✓ (all file types via fetch interception + auto-click) |
-| **Claude** | ✓ (`text` / `image` / `tool_use` / `tool_result` content blocks, attachments, files) | ✓ | ✓ | ✓ for anything the page renders inline |
+| **Claude** | ✓ (`text` / `image` / `tool_use` / `tool_result` content blocks, attachments, files) | ✓ | ✓ | ✓ for images, PDFs, and text-extractable files (`.py`, `.ipynb`, `.m`, etc. via Claude's `extracted_content`). Binary uploads like `.mlx` are sandbox-only and not exposed by Claude's public API. |
 | **Gemini** | ✓ (Google Takeout activity log, session-grouped by time gap) | — | — | — |
 
 ## Privacy
@@ -53,8 +55,8 @@ Open <http://localhost:5173/>. For the extension, see [`extension/README.md`](ex
 
 ```bash
 npm run dev          # Vite dev server on :5173
-npm run build        # tsc -b + vite build
-npm test             # vitest run (350+ unit tests)
+npm run build        # tsc -b + vite build (emits PWA assets via vite-plugin-pwa)
+npm test             # vitest run (344 unit tests)
 npm run test:watch   # vitest in watch mode
 npm run lint         # eslint
 ```
@@ -100,6 +102,8 @@ src/
     conversation.ts              NormalizedConversation, NormalizedMessage,
                                  NormalizedAttachment, ExportOptions,
                                  Provider, ConversationSource
+  data/
+    sampleConversation.ts        the demo chat loaded by the "see a sample" link
 
 extension/                       MV3 browser extension (see extension/README.md)
   manifest.json

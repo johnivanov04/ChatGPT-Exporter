@@ -4,12 +4,17 @@ One-click export of the current **ChatGPT** or **Claude** conversation to ChatVa
 
 ## Status
 
-v0.5.0. Supports:
+v0.6.0. Submitted to the Chrome Web Store on 2026-06-09; install link will land here once review completes.
 
-- **chatgpt.com** and **chat.openai.com** — full attachment capture (text, images, PDFs, MLX, IPYNB, any file type)
-- **claude.ai** — text + DOM-anchored attachments; binary capture works for anything the page renders inline
+Currently supports:
 
-A Gemini scraper is a future thing — Gemini's structure differs more, and the Takeout ZIP path covers most use cases already.
+- **chatgpt.com** and **chat.openai.com** — full attachment capture (text, images, PDFs, MLX, IPYNB, any file type) via fetch interception + auto-click + orphan sweep.
+- **claude.ai** — full transcript scrape plus attachment binaries:
+  - Images and PDFs via the page's own `/api/{org}/files/{uuid}/preview` URLs.
+  - Text-extractable file types (`.py`, `.m`, `.ipynb`, `.md`, `.csv`, etc.) via the `extracted_content` field in Claude's conversation API.
+  - Blob uploads (`.mlx`, `.mat`, etc. with `file_kind: "blob"`) are not exposed by Claude's public API — these come through with a "use the Takeout export instead" placeholder.
+
+A Gemini extension scraper is future work; the Takeout ZIP path on chatvault.space already covers Gemini for most users.
 
 ## Install (developer mode)
 
