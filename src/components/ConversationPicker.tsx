@@ -11,7 +11,9 @@ import { formatDateShort } from "../lib/utils/date";
 import {
   buildSearchText,
   filterConversations,
+  findMessageSnippet,
   firstUserMessagePreview,
+  highlightSegments,
   sortConversationsNewestFirst,
 } from "../lib/utils/conversationSummary";
 
@@ -92,36 +94,66 @@ export function ConversationPicker({
         </div>
       ) : (
         <ul className="space-y-2">
-          {filtered.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(c)}
-                className="group w-full text-left rounded-xl border border-slate-700/80 bg-slate-900 p-4 hover:border-amber-500/60 hover:shadow-md hover:shadow-amber-500/5 hover:-translate-y-0.5 transition-all duration-150 focus-ring"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="font-medium text-slate-100 truncate text-[15px]">
-                    {c.title}
-                  </h3>
-                  <MessageCountBadge count={c.messages.length} />
-                </div>
-                <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-400">
-                  <span className="inline-flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {dateLabel(c)}
-                  </span>
-                </div>
-                {firstUserMessagePreview(c) && (
-                  <p className="mt-2.5 text-sm text-slate-300 line-clamp-2 leading-relaxed">
-                    {firstUserMessagePreview(c)}
-                  </p>
-                )}
-              </button>
-            </li>
-          ))}
+          {filtered.map((c) => {
+            const snippet = findMessageSnippet(c, query);
+            const preview = snippet ?? firstUserMessagePreview(c);
+            const isSnippetMatch = snippet !== null;
+            return (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(c)}
+                  className="group w-full text-left rounded-xl border border-slate-700/80 bg-slate-900 p-4 hover:border-amber-500/60 hover:shadow-md hover:shadow-amber-500/5 hover:-translate-y-0.5 transition-all duration-150 focus-ring"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="font-medium text-slate-100 truncate text-[15px]">
+                      <Highlighted text={c.title} query={query} />
+                    </h3>
+                    <MessageCountBadge count={c.messages.length} />
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-400">
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {dateLabel(c)}
+                    </span>
+                    {isSnippetMatch && (
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-300">
+                        Match in message
+                      </span>
+                    )}
+                  </div>
+                  {preview && (
+                    <p className="mt-2.5 text-sm text-slate-300 line-clamp-2 leading-relaxed">
+                      <Highlighted text={preview} query={query} />
+                    </p>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
+  );
+}
+
+function Highlighted({ text, query }: { text: string; query: string }) {
+  const segments = highlightSegments(text, query);
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.match ? (
+          <mark
+            key={i}
+            className="bg-amber-500/30 text-amber-100 rounded-sm px-0.5"
+          >
+            {seg.text}
+          </mark>
+        ) : (
+          <span key={i}>{seg.text}</span>
+        ),
+      )}
+    </>
   );
 }
 

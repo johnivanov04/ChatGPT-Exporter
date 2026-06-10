@@ -5,6 +5,8 @@ import {
   sortConversationsNewestFirst,
   buildSearchText,
   filterConversations,
+  findMessageSnippet,
+  highlightSegments,
   isInternalMessage,
 } from "./conversationSummary";
 import type {
@@ -267,5 +269,147 @@ describe("filterConversations", () => {
     expect(
       filterConversations(list, "react", new Map()).map((c) => c.id),
     ).toEqual(["3"]);
+  });
+});
+
+describe("findMessageSnippet", () => {
+  const c = convo({
+    id: "1",
+    title: "Refactor notes",
+    messages: [
+      msg("user", "Quick question about hashing functions", 0),
+      msg(
+        "assistant",
+        "Sure. To deduplicate lines you can use a set as a membership filter. The deduplicate step is O(n).",
+        1,
+      ),
+    ],
+  });
+
+  it("returns null when the query is empty", () => {
+    expect(findMessageSnippet(c, "")).toBeNull();
+    expect(findMessageSnippet(c, "   ")).toBeNull();
+  });
+
+  it("returns null when no message body contains the query", () => {
+    expect(findMessageSnippet(c, "zzz")).toBeNull();
+  });
+
+  it("returns null when the match is in the title only (caller falls back to preview)", () => {
+    // 'refactor' only appears in title, not in any message body
+    expect(findMessageSnippet(c, "refactor")).toBeNull();
+  });
+
+  it("returns a snippet around the first matching message", () => {
+    const snippet = findMessageSnippet(c, "deduplicate");
+    expect(snippet).toContain("deduplicate");
+    // snippet should be a windowed substring, not the whole message
+    expect(snippet?.length).toBeLessThan(220);
+  });
+
+  it("collapses whitespace inside the snippet", () => {
+    const noisy = convo({
+      id: "noisy",
+      title: "x",
+      messages: [
+        msg(
+          "assistant",
+          "some text\n\n\nwith   linebreaks\tand     tabs around match here",
+          0,
+        ),
+      ],
+    });
+    const snippet = findMessageSnippet(noisy, "match");
+    expect(snippet).not.toMatch(/\s{2,}/);
+    expect(snippet).not.toContain("\t");
+    expect(snippet).not.toContain("\n");
+  });
+
+  it("prefixes/suffixes with ellipsis when the match is mid-message", () => {
+    const long = convo({
+      id: "long",
+      title: "x",
+      messages: [
+        msg(
+          "assistant",
+          "a".repeat(400) + " needle " + "z".repeat(400),
+          0,
+        ),
+      ],
+    });
+    const snippet = findMessageSnippet(long, "needle");
+    expect(snippet?.startsWith("…")).toBe(true);
+    expect(snippet?.endsWith("…")).toBe(true);
+  });
+
+  it("is case-insensitive", () => {
+    expect(findMessageSnippet(c, "DEDUPLICATE")).toContain("deduplicate");
+  });
+
+  it("matches on whichever query term appears earliest in the message", () => {
+    const m = convo({
+      id: "m",
+      title: "x",
+      messages: [msg("assistant", "alpha then beta then gamma", 0)],
+    });
+    // 'beta' appears before 'gamma' in the message text
+    const snippet = findMessageSnippet(m, "gamma beta");
+    expect(snippet).toContain("beta");
+  });
+});
+
+describe("highlightSegments", () => {
+  it("returns a single non-match segment when query is empty", () => {
+    const segs = highlightSegments("hello world", "");
+    expect(segs).toEqual([{ text: "hello world", match: false }]);
+  });
+
+  it("returns a single non-match segment when text is empty", () => {
+    expect(highlightSegments("", "hello")).toEqual([{ text: "", match: false }]);
+  });
+
+  it("wraps single matches", () => {
+    expect(highlightSegments("hello world", "world")).toEqual([
+      { text: "hello ", match: false },
+      { text: "world", match: true },
+    ]);
+  });
+
+  it("is case-insensitive and preserves original casing in output", () => {
+    const segs = highlightSegments("Hello World", "WORLD");
+    expect(segs).toEqual([
+      { text: "Hello ", match: false },
+      { text: "World", match: true },
+    ]);
+  });
+
+  it("wraps multiple non-overlapping matches", () => {
+    expect(highlightSegments("foo bar foo bar", "foo")).toEqual([
+      { text: "foo", match: true },
+      { text: " bar ", match: false },
+      { text: "foo", match: true },
+      { text: " bar", match: false },
+    ]);
+  });
+
+  it("merges overlapping match ranges from multiple terms", () => {
+    // 'hello' and 'lloworld' overlap inside 'helloworld'
+    const segs = highlightSegments("helloworld", "hello llowor");
+    expect(segs.filter((s) => s.match).length).toBe(1);
+    expect(segs.find((s) => s.match)?.text).toBe("hellowor");
+  });
+
+  it("handles multiple space-separated terms", () => {
+    const segs = highlightSegments("alpha beta gamma", "alpha gamma");
+    expect(segs.filter((s) => s.match).map((s) => s.text)).toEqual([
+      "alpha",
+      "gamma",
+    ]);
+  });
+
+  it("returns the whole string as non-match when no term hits", () => {
+    expect(highlightSegments("hello world", "xxx")).toEqual([
+      { text: "hello world", match: false },
+    ]);
   });
 });

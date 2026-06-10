@@ -84,3 +84,96 @@ export function filterConversations(
     return terms.every((t) => blob.includes(t));
   });
 }
+
+/**
+ * For a given query, find the first message containing one of the query
+ * terms and return a windowed snippet of text around the match. Used by
+ * the picker to show *where* in the chat the search hit lives.
+ *
+ * Returns null when the query is empty or no match is found in any
+ * message body. (Title-only matches return null — the caller falls back
+ * to the standard preview.)
+ */
+export function findMessageSnippet(
+  conversation: NormalizedConversation,
+  query: string,
+  windowChars = 80,
+): string | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  const terms = q.split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return null;
+
+  for (const message of conversation.messages) {
+    const lower = message.content.toLowerCase();
+    let earliestIdx = -1;
+    let matchedTerm = "";
+    for (const t of terms) {
+      const idx = lower.indexOf(t);
+      if (idx === -1) continue;
+      if (earliestIdx === -1 || idx < earliestIdx) {
+        earliestIdx = idx;
+        matchedTerm = t;
+      }
+    }
+    if (earliestIdx === -1) continue;
+
+    const start = Math.max(0, earliestIdx - windowChars);
+    const end = Math.min(
+      message.content.length,
+      earliestIdx + matchedTerm.length + windowChars,
+    );
+    let snippet = message.content.slice(start, end).replace(/\s+/g, " ").trim();
+    if (start > 0) snippet = "… " + snippet;
+    if (end < message.content.length) snippet = snippet + " …";
+    return snippet;
+  }
+  return null;
+}
+
+/**
+ * Split `text` into alternating non-match / match segments for inline
+ * highlight rendering. Each segment is `{ text, match: boolean }`. Used
+ * by the picker to wrap query hits in <mark> without dangerouslySet.
+ */
+export function highlightSegments(
+  text: string,
+  query: string,
+): Array<{ text: string; match: boolean }> {
+  const q = query.trim().toLowerCase();
+  if (!q || !text) return [{ text, match: false }];
+  const terms = q.split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [{ text, match: false }];
+
+  const lower = text.toLowerCase();
+  // Build a flat list of [start,end] match ranges, then merge overlaps.
+  const ranges: Array<[number, number]> = [];
+  for (const t of terms) {
+    let from = 0;
+    while (from < lower.length) {
+      const idx = lower.indexOf(t, from);
+      if (idx === -1) break;
+      ranges.push([idx, idx + t.length]);
+      from = idx + t.length;
+    }
+  }
+  if (ranges.length === 0) return [{ text, match: false }];
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [ranges[0]];
+  for (let i = 1; i < ranges.length; i++) {
+    const top = merged[merged.length - 1];
+    const next = ranges[i];
+    if (next[0] <= top[1]) top[1] = Math.max(top[1], next[1]);
+    else merged.push(next);
+  }
+
+  const out: Array<{ text: string; match: boolean }> = [];
+  let cursor = 0;
+  for (const [s, e] of merged) {
+    if (s > cursor) out.push({ text: text.slice(cursor, s), match: false });
+    out.push({ text: text.slice(s, e), match: true });
+    cursor = e;
+  }
+  if (cursor < text.length) out.push({ text: text.slice(cursor), match: false });
+  return out;
+}
