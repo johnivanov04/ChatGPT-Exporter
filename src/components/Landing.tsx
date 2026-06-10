@@ -5,6 +5,7 @@ import {
   Lock,
   Zap,
   FileText,
+  PlayCircle,
   type LucideIcon,
 } from "lucide-react";
 import { HowToExport } from "./HowToExport";
@@ -12,9 +13,14 @@ import { HowToExport } from "./HowToExport";
 interface LandingProps {
   onChooseZip: () => void;
   onChoosePaste: () => void;
+  onChooseSample: () => void;
 }
 
-export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
+export function Landing({
+  onChooseZip,
+  onChoosePaste,
+  onChooseSample,
+}: LandingProps) {
   return (
     <div>
       <div className="text-center max-w-3xl mx-auto mb-12">
@@ -32,6 +38,15 @@ export function Landing({ onChooseZip, onChoosePaste }: LandingProps) {
           PDF, Markdown, or JSON. Everything runs in this tab &mdash; no
           backend, no accounts.
         </p>
+        <button
+          type="button"
+          onClick={onChooseSample}
+          className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-amber-300 hover:text-amber-200 transition focus-ring rounded-md px-1"
+        >
+          <PlayCircle className="h-4 w-4" />
+          or see a sample conversation
+          <span aria-hidden="true">&rarr;</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

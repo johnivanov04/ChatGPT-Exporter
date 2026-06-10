@@ -29,7 +29,8 @@ export type ConversationSource =
   | "claude_export_zip"
   | "gemini_takeout"
   | "manual_paste"
-  | "browser_extension";
+  | "browser_extension"
+  | "sample";
 
 export type Provider = "chatgpt" | "claude" | "gemini";
 
@@ -45,6 +46,8 @@ export function sourceLabel(source: ConversationSource): string {
       return "Manual paste";
     case "browser_extension":
       return "Browser extension";
+    case "sample":
+      return "Sample conversation";
   }
 }
 

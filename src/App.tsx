@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Landing } from "./components/Landing";
+import { sampleConversation } from "./data/sampleConversation";
 import { UploadZip } from "./components/UploadZip";
 import { ConversationPicker } from "./components/ConversationPicker";
 import { ConversationPreview } from "./components/ConversationPreview";
@@ -174,6 +175,7 @@ export default function App() {
           <Landing
             onChooseZip={() => goTo({ kind: "upload-zip" })}
             onChoosePaste={() => goTo({ kind: "paste" })}
+            onChooseSample={() => acceptImport(sampleConversation)}
           />
         )}
 
