@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -207,7 +207,10 @@ interface MessageRowProps {
   showMessageNumbers: boolean;
 }
 
-function MessageRow({
+// Memoized so toggling export/redaction options in the side panel doesn't
+// reparse the markdown of every message. Markdown rendering dominates the
+// render budget for long chats.
+const MessageRow = memo(function MessageRow({
   message,
   displayIndex,
   showTimestamps,
@@ -219,7 +222,16 @@ function MessageRow({
   const internal = isInternalMessage(message);
 
   return (
-    <li className={`px-7 py-5 border-l-2 ${tone.leftBorder}`}>
+    // content-visibility:auto lets the browser skip rendering work for
+    // off-screen rows; contain-intrinsic-size gives it a reasonable
+    // estimate so the scrollbar doesn't jump.
+    <li
+      className={`px-7 py-5 border-l-2 ${tone.leftBorder}`}
+      style={{
+        contentVisibility: "auto",
+        containIntrinsicSize: "1px 280px",
+      }}
+    >
       <div className="flex items-center gap-2.5 mb-2.5">
         <span
           className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ${tone.avatar}`}
@@ -269,7 +281,7 @@ function MessageRow({
       )}
     </li>
   );
-}
+});
 
 /* ------------------------------- role tones ----------------------------- */
 
