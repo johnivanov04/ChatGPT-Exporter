@@ -8,7 +8,7 @@ Converts ChatGPT / Claude / Gemini chats into clean **PDF**, **Markdown**, or **
 
 - **Upload a data-export ZIP** from any of ChatGPT, Claude, or Gemini (Google Takeout). Auto-detects which provider and uses the right parser.
 - **Paste a transcript** as a fallback. Recognizes `User:` / `[User]` / `You said:` markers and falls back to a heuristic for ChatGPT page copies (attachment filenames + `Thought for X` markers as structural anchors).
-- **Use the browser extension** to export your *current* ChatGPT or Claude tab in one click — including attached files. See [`extension/README.md`](extension/README.md) for the architecture.
+- **Use the browser extension** to export your *current* ChatGPT or Claude tab in one click — including attached files. Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/chatvault/eipcafoedgajpooojoholcpafdcjkdpd), or see [`extension/README.md`](extension/README.md) for the architecture.
 - **Preview** the full transcript with markdown rendering and role-distinguished messages, then download as PDF / Markdown / JSON (or `.zip` when attachments are present, containing the markdown/JSON plus an `attachments/` folder).
 - **Redact** emails / phone numbers / API keys (provider-specific patterns for OpenAI / Anthropic / AWS / Stripe / GitHub / Google / Slack) live in the preview before exporting.
 - **Try a sample** conversation right from the landing page — no upload required, just hit "see a sample conversation" to drop into the Preview screen with a demo chat.

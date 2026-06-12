@@ -69,9 +69,10 @@ export function Landing({
         <Card
           icon={Puzzle}
           title="Browser Extension"
-          subtitle="Coming soon"
-          description="One-click export from any ChatGPT page. Not in MVP yet."
-          variant="disabled"
+          subtitle="Available"
+          description="One-click export from any ChatGPT or Claude tab — attachments included. Install from the Chrome Web Store."
+          variant="secondary"
+          href="https://chromewebstore.google.com/detail/chatvault/eipcafoedgajpooojoholcpafdcjkdpd"
         />
       </div>
 
@@ -109,6 +110,7 @@ interface CardProps {
   description: string;
   variant: "primary" | "secondary" | "disabled";
   onClick?: () => void;
+  href?: string;
 }
 
 function Card({
@@ -118,6 +120,7 @@ function Card({
   description,
   variant,
   onClick,
+  href,
 }: CardProps) {
   const disabled = variant === "disabled";
 
@@ -135,13 +138,23 @@ function Card({
     variant === "primary"
       ? `bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-0.5 ${primaryClasses}`
       : "bg-slate-900 border border-slate-700 hover:border-slate-400 hover:shadow-md hover:-translate-y-0.5";
+  const sharedClasses = `relative rounded-xl p-6 flex flex-col h-full text-left transition-all duration-200 focus-ring ${variantClasses}`;
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className={sharedClasses}
+      >
+        <CardInner Icon={Icon} subtitle={subtitle} title={title} description={description} variant={variant} />
+      </a>
+    );
+  }
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative rounded-xl p-6 flex flex-col h-full text-left transition-all duration-200 focus-ring ${variantClasses}`}
-    >
+    <button type="button" onClick={onClick} className={sharedClasses}>
       <CardInner Icon={Icon} subtitle={subtitle} title={title} description={description} variant={variant} />
     </button>
   );

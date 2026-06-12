@@ -4,7 +4,7 @@ One-click export of the current **ChatGPT** or **Claude** conversation to ChatVa
 
 ## Status
 
-v0.6.0. Submitted to the Chrome Web Store on 2026-06-09; install link will land here once review completes.
+v0.6.0 — **[live on the Chrome Web Store](https://chromewebstore.google.com/detail/chatvault/eipcafoedgajpooojoholcpafdcjkdpd)**.
 
 Currently supports:
 
@@ -16,7 +16,12 @@ Currently supports:
 
 A Gemini extension scraper is future work; the Takeout ZIP path on chatvault.space already covers Gemini for most users.
 
-## Install (developer mode)
+## Install
+
+**From the Chrome Web Store (recommended):**
+<https://chromewebstore.google.com/detail/chatvault/eipcafoedgajpooojoholcpafdcjkdpd>
+
+**Or load from source (for development):**
 
 1. Open `chrome://extensions/` in Chrome (or `edge://extensions/` in Edge — same flow).
 2. Toggle **Developer mode** on (top right).
