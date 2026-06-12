@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Puzzle } from "lucide-react";
 import { Landing } from "./components/Landing";
 import { sampleConversation } from "./data/sampleConversation";
 import { UploadZip } from "./components/UploadZip";
@@ -155,15 +155,27 @@ export default function App() {
               </span>
             </div>
           </button>
-          <a
-            href="https://github.com/johnivanov04/ChatVault"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-100 transition px-2.5 py-1.5 rounded-md hover:bg-slate-800 focus-ring"
-          >
-            <span className="hidden sm:inline">GitHub</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://chromewebstore.google.com/detail/chatvault/eipcafoedgajpooojoholcpafdcjkdpd"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-200 bg-amber-500/15 border border-amber-500/40 hover:bg-amber-500/25 hover:border-amber-500/60 transition px-2.5 py-1.5 rounded-md focus-ring"
+            >
+              <Puzzle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Install on Chrome</span>
+              <span className="sm:hidden">Install</span>
+            </a>
+            <a
+              href="https://github.com/johnivanov04/ChatVault"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-100 transition px-2.5 py-1.5 rounded-md hover:bg-slate-800 focus-ring"
+            >
+              <span className="hidden sm:inline">GitHub</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
         </div>
       </header>
 
