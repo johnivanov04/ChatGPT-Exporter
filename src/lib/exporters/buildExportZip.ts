@@ -5,6 +5,7 @@ import type {
 } from "../../types/conversation";
 import { exportMarkdown } from "./exportMarkdown";
 import { exportJson } from "./exportJson";
+import { generatePdf } from "./generatePdf";
 import { redactConversation } from "../redaction/redactText";
 
 /**
@@ -65,6 +66,25 @@ export async function buildJsonZip(
 ): Promise<Blob> {
   const json = exportJson(conversation, options, now);
   return buildSidecarZip(conversation, options, baseName, "json", json);
+}
+
+/**
+ * Build a `.zip` Blob containing `<baseName>.pdf` plus an `attachments/`
+ * folder with every attachment whose binary we managed to fetch.
+ */
+export async function buildPdfZip(
+  conversation: NormalizedConversation,
+  options: ExportOptions,
+  baseName: string,
+  now?: Date,
+): Promise<Blob> {
+  const pdf = await generatePdf(conversation, options, now);
+  const redacted = redactConversation(conversation, options);
+  const zip = new JSZip();
+  zip.file(`${baseName}.pdf`, pdf);
+  const folder = zip.folder("attachments");
+  if (folder) addAttachmentsToFolder(redacted, folder);
+  return zip.generateAsync({ type: "blob" });
 }
 
 /**

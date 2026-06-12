@@ -23,13 +23,13 @@ import { ExportOptionsPanel } from "./ExportOptionsPanel";
 import { exportMarkdown } from "../lib/exporters/exportMarkdown";
 import { exportJson } from "../lib/exporters/exportJson";
 import { downloadFile, safeFilename } from "../lib/utils/downloadFile";
-import { PrintView } from "./PrintView";
-import { printConversation } from "../lib/exporters/printPdf";
+import { generatePdf } from "../lib/exporters/generatePdf";
 import { redactConversation } from "../lib/redaction/redactText";
 import {
   buildAttachmentsOnlyZip,
   buildJsonZip,
   buildMarkdownZip,
+  buildPdfZip,
   hasDownloadableAttachments,
   summarizeAttachments,
 } from "../lib/exporters/buildExportZip";
@@ -97,8 +97,14 @@ export function ConversationPreview({
     }
   };
 
-  const handleExportPdf = () => {
-    printConversation(baseFilename);
+  const handleExportPdf = async () => {
+    if (hasAttachments) {
+      const blob = await buildPdfZip(exportable, options, baseFilename);
+      downloadFile(`${baseFilename}.zip`, blob, "application/zip");
+    } else {
+      const pdf = await generatePdf(exportable, options);
+      downloadFile(`${baseFilename}.pdf`, pdf, "application/pdf");
+    }
   };
 
   const handleExportAttachmentsZip = async () => {
@@ -192,8 +198,6 @@ export function ConversationPreview({
           exportDisabled={exportable.messages.length === 0}
         />
       </div>
-
-      <PrintView conversation={exportable} options={options} />
     </div>
   );
 }
